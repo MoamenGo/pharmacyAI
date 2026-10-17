@@ -1,0 +1,13 @@
+# .NET
+backend/**/bin/
+backend/**/obj/
+backend/artifacts/
+*.db
+*.db-wal
+*.db-shm
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.user
