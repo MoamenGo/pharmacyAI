@@ -53,7 +53,19 @@ Override it with `--Database:Path=<file>`.
 
 ## Keyboard shortcuts
 
-| Key | Action |
-| --- | --- |
-| F2 | Focus the pharmacy name field |
-| F5 | Re-check the connection to the local API |
+| Screen | Key | Action |
+| --- | --- | --- |
+| Home | F2 | Focus the pharmacy name field |
+| Home | F5 | Re-check the connection to the local API |
+| Inventory | F2 | Add a new drug |
+| Inventory | F3 | Focus search (a scanned barcode + Enter opens the drug, or offers to add it) |
+| Inventory | F4 | Receive stock for the selected drug |
+
+## Inventory rules
+
+- Stock is stored per drug batch as an integer count of the smallest unit (`QuantityInSubUnits`: strips, ampoules).
+  A pack holds `SubUnitsPerPack` of them; receiving takes packs plus loose sub-units.
+- Deductions are FEFO: earliest expiry first, then earliest received; expired batches are never sold.
+  A batch is sellable through its expiry date, judged in Cairo local time.
+- Money crosses the API as integer piasters (`...Piasters` fields); the domain uses `decimal` EGP.
+- Each batch row has a version token, so two concurrent deductions can never spend the same stock.
