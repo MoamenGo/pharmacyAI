@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Abstractions;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
+using PharmaAI.Domain.Sales;
 
 namespace PharmaAI.Application.Tests.TestSupport;
 
@@ -15,6 +16,8 @@ public sealed class BeforeSaveDbContext(IPharmaDbContext inner, Func<Task> befor
     public DbSet<Drug> Drugs => inner.Drugs;
 
     public DbSet<StockBatch> StockBatches => inner.StockBatches;
+
+    public DbSet<Sale> Sales => inner.Sales;
 
     public void ClearChangeTracker() => inner.ClearChangeTracker();
 

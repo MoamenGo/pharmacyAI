@@ -10,4 +10,7 @@ public sealed class InsufficientStockException(int requestedInSubUnits, int avai
     public int RequestedInSubUnits { get; } = requestedInSubUnits;
 
     public int AvailableInSubUnits { get; } = availableInSubUnits;
+
+    /// <summary>The drug that ran short, so a multi-line sale can point at the right line.</summary>
+    public Guid? DrugId { get; init; }
 }

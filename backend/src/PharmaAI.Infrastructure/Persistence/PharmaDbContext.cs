@@ -4,6 +4,7 @@ using PharmaAI.Application.Common;
 using PharmaAI.Application.Abstractions;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
+using PharmaAI.Domain.Sales;
 
 namespace PharmaAI.Infrastructure.Persistence;
 
@@ -14,6 +15,8 @@ public sealed class PharmaDbContext(DbContextOptions<PharmaDbContext> options) :
     public DbSet<Drug> Drugs => Set<Drug>();
 
     public DbSet<StockBatch> StockBatches => Set<StockBatch>();
+
+    public DbSet<Sale> Sales => Set<Sale>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 

@@ -39,7 +39,6 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PharmaAI.Domain.Inventory.Drug", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Barcode")
@@ -89,7 +88,6 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PharmaAI.Domain.Inventory.StockBatch", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("BatchNumber")
@@ -126,6 +124,122 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PharmaAI.Domain.Sales.Sale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Number")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Paid")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SoldAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.ToTable("Sales", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DrugId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DrugNameAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QuantityInSubUnits")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UnitName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DrugId");
+
+                    b.HasIndex("SaleId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("SaleLines", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLineBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QuantityInSubUnits")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SaleLineId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StockBatchId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SaleLineId");
+
+                    b.HasIndex("StockBatchId");
+
+                    b.ToTable("SaleLineBatches", (string)null);
+                });
+
             modelBuilder.Entity("PharmaAI.Domain.Inventory.StockBatch", b =>
                 {
                     b.HasOne("PharmaAI.Domain.Inventory.Drug", null)
@@ -135,7 +249,47 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLine", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Inventory.Drug", null)
+                        .WithMany()
+                        .HasForeignKey("DrugId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PharmaAI.Domain.Sales.Sale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLineBatch", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Sales.SaleLine", null)
+                        .WithMany("Batches")
+                        .HasForeignKey("SaleLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PharmaAI.Domain.Inventory.StockBatch", null)
+                        .WithMany()
+                        .HasForeignKey("StockBatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PharmaAI.Domain.Inventory.Drug", b =>
+                {
+                    b.Navigation("Batches");
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.Sale", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLine", b =>
                 {
                     b.Navigation("Batches");
                 });
