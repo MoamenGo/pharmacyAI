@@ -13,3 +13,79 @@ body {
 *:focus-visible {
   @apply outline-none ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-950;
 }
+
+/* Paper receipt: invisible on screen, the only thing printed. */
+.receipt {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  body > *:not(.receipt) {
+    display: none !important;
+  }
+
+  .receipt {
+    display: block;
+    width: 72mm;
+    padding: 4mm;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  .receipt-title {
+    margin-bottom: 2mm;
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+  }
+
+  .receipt table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt td {
+    padding: 1mm 0;
+    vertical-align: top;
+  }
+
+  .receipt hr {
+    margin: 2mm 0;
+    border: 0;
+    border-top: 1px dashed black;
+  }
+
+  .receipt-row {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .receipt-amount {
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .receipt-muted {
+    font-size: 9pt;
+  }
+
+  .receipt-total {
+    font-size: 13pt;
+    font-weight: bold;
+  }
+
+  .receipt-footer {
+    text-align: center;
+    font-size: 9pt;
+  }
+}

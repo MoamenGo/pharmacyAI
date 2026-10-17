@@ -58,11 +58,51 @@ export interface StockReceipt {
   looseSubUnits: number;
 }
 
+export type SaleUnit = "pack" | "subUnit";
+
+export interface NewSale {
+  items: { drugId: string; unit: SaleUnit; quantity: number }[];
+  paidPiasters: number;
+}
+
+export interface SaleLine {
+  lineNumber: number;
+  drugId: string;
+  drugNameAr: string;
+  unit: SaleUnit;
+  unitName: string;
+  quantity: number;
+  quantityInSubUnits: number;
+  unitPricePiasters: number;
+  lineTotalPiasters: number;
+  batches: { batchNumber: string; expiryDate: string; quantityInSubUnits: number }[];
+}
+
+export interface Sale {
+  id: string;
+  number: number;
+  soldAtUtc: string;
+  businessDate: string;
+  totalPiasters: number;
+  paidPiasters: number;
+  changePiasters: number;
+  lines: SaleLine[];
+}
+
+export interface DailySales {
+  date: string;
+  count: number;
+  totalPiasters: number;
+  sales: { id: string; number: number; soldAtUtc: string; lineCount: number; totalPiasters: number }[];
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly errors: Record<string, string[]> = {},
     readonly code: string | null = null,
+    /** Extra problem fields, e.g. drugId and availableInSubUnits on stock.insufficient. */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(`API request failed with status ${status}`);
   }
@@ -76,7 +116,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = response.headers.get("content-type")?.includes("json") ? await response.json() : {};
-    throw new ApiError(response.status, body.errors ?? {}, body.code ?? null);
+    throw new ApiError(response.status, body.errors ?? {}, body.code ?? null, body);
   }
 
   return (await response.json()) as T;
@@ -117,4 +157,8 @@ export const api = {
 
   receiveStock: (drugId: string, receipt: StockReceipt) =>
     request<DrugDetails>(`/api/drugs/${drugId}/batches`, { method: "POST", body: JSON.stringify(receipt) }),
+
+  createSale: (sale: NewSale) => request<Sale>("/api/sales", { method: "POST", body: JSON.stringify(sale) }),
+
+  listSales: (date?: string) => request<DailySales>(`/api/sales${date ? `?date=${date}` : ""}`),
 };
