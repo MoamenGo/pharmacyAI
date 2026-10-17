@@ -60,6 +60,13 @@ Override it with `--Database:Path=<file>`.
 | Inventory | F2 | Add a new drug |
 | Inventory | F3 | Focus search (a scanned barcode + Enter opens the drug, or offers to add it) |
 | Inventory | F4 | Receive stock for the selected drug |
+| Sale | F2 | New sale (press twice to discard a sale in progress) |
+| Sale | F3 | Focus search (scan a barcode, or type a name and pick with ↑/↓ + Enter) |
+| Sale | F4 | Switch the selected line between packs and strips |
+| Sale | F6 | Edit the selected line's quantity (Enter returns to search) |
+| Sale | F8 | Remove the selected line |
+| Sale | F9 | Enter the amount paid (empty means exact change) |
+| Sale | F10 | Save and print the receipt; after a sale, reprint it |
 
 ## Inventory rules
 
@@ -69,3 +76,11 @@ Override it with `--Database:Path=<file>`.
   A batch is sellable through its expiry date, judged in Cairo local time.
 - Money crosses the API as integer piasters (`...Piasters` fields); the domain uses `decimal` EGP.
 - Each batch row has a version token, so two concurrent deductions can never spend the same stock.
+
+## Sale rules
+
+- A sale is cash only and is saved in one step: every line takes its stock FEFO, or nothing is saved.
+  Each line records the batches it came from, for recalls, returns and tax reporting.
+- Lines sell whole packs at the public price or loose strips at the strip price (pack price ÷ strips, rounded to the piaster).
+- Receipt numbers are sequential. If two tills save at once, the second retries with the next number and fresh stock.
+- The receipt is printed with the system print dialog on 80 mm thermal paper; the pharmacy name comes from the Home screen.

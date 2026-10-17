@@ -7,6 +7,9 @@ const MESSAGES: Record<string, string> = {
   "stock.insufficient": "الكمية المتاحة غير كافية",
   "stock.concurrent_update": "المخزون اتغير أثناء الحفظ، حاول مرة تانية",
   "stock.quantity_too_large": "الكمية أكبر من المسموح للتشغيلة",
+  "sale.empty": "الفاتورة فاضية، ضيف صنف الأول",
+  "sale.insufficient_payment": "المبلغ المدفوع أقل من الإجمالي",
+  "request.invalid": "البيانات المرسلة غير صحيحة",
   "conflict.duplicate": "البيانات دي متسجلة قبل كده، حدّث الصفحة وحاول تاني",
 };
 

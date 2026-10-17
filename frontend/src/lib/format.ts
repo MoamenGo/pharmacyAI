@@ -50,3 +50,18 @@ export function expiryLevel(isoDate: string, today = new Date()): ExpiryLevel {
   const days = (Date.parse(isoDate) - Date.parse(todayIso)) / 86_400_000;
   return days <= EXPIRY_WARNING_DAYS ? "soon" : "ok";
 }
+
+/** "17/10/2026 12:00" in Cairo time, with Latin digits, for receipts. */
+export function formatCairoDateTime(isoUtc: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Cairo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(isoUtc));
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}`;
+}

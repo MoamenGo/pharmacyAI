@@ -107,7 +107,15 @@ public sealed class Drug
     /// </summary>
     public IReadOnlyList<BatchAllocation> Deduct(int quantityInSubUnits, DateOnly today)
     {
-        var allocations = Fefo.Allocate(_batches, quantityInSubUnits, today);
+        IReadOnlyList<BatchAllocation> allocations;
+        try
+        {
+            allocations = Fefo.Allocate(_batches, quantityInSubUnits, today);
+        }
+        catch (InsufficientStockException ex)
+        {
+            throw new InsufficientStockException(ex.RequestedInSubUnits, ex.AvailableInSubUnits) { DrugId = Id };
+        }
 
         foreach (var allocation in allocations)
         {
