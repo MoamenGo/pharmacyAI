@@ -138,6 +138,18 @@ public sealed class InventoryApiTests : IDisposable
     }
 
     [Fact]
+    public async Task Receiving_nothing_reports_the_quantity_field()
+    {
+        var created = await CreateDrugAsync();
+
+        var response = await ReceiveAsync(created.Drug.Id, "B1", FarExpiry, packs: 0);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(json.RootElement.GetProperty("errors").TryGetProperty("quantity", out _));
+    }
+
+    [Fact]
     public async Task Unknown_drug_is_404()
     {
         var response = await ReceiveAsync(Guid.NewGuid(), "B1", FarExpiry, packs: 1);

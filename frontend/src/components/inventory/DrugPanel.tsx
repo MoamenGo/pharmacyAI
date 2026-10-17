@@ -47,7 +47,7 @@ export const DrugPanel = forwardRef<HTMLInputElement, Props>(function DrugPanel(
             {batches.map((batch) => (
               <li key={batch.id} className="flex items-center justify-between gap-2 text-sm">
                 <span className="font-mono" dir="ltr">{batch.batchNumber}</span>
-                <ExpiryBadge date={batch.expiryDate} />
+                <ExpiryBadge date={batch.expiryDate} expired={batch.isExpired} />
                 <span>{qty(batch.quantityInSubUnits)}</span>
               </li>
             ))}

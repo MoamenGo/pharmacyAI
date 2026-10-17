@@ -23,7 +23,7 @@ public sealed class ReceiveStockCommandValidator : AbstractValidator<ReceiveStoc
 
         RuleFor(c => c)
             .Must(c => c.Packs > 0 || c.LooseSubUnits > 0)
-            .WithName("quantity")
+            .OverridePropertyName("quantity")
             .WithMessage("Receive at least one pack or one sub-unit.");
     }
 }

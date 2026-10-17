@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ internal sealed class ApiExceptionHandler : IExceptionHandler
         {
             ValidationException validation => Results.ValidationProblem(
                 validation.Errors
-                    .GroupBy(e => ToCamelCase(e.PropertyName))
+                    .GroupBy(e => JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName))
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
                 extensions: CodeExtension(validation.Errors.Select(e => e.ErrorCode).FirstOrDefault(c => c.Contains('.')))),
             NotFoundException notFound => Results.Problem(
@@ -31,6 +32,11 @@ internal sealed class ApiExceptionHandler : IExceptionHandler
                 title: "Business rule violated",
                 detail: domain.Message,
                 extensions: CodeExtension(domain.Code)),
+            DuplicateKeyException => Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Duplicate",
+                detail: exception.Message,
+                extensions: CodeExtension("conflict.duplicate")),
             DbUpdateConcurrencyException => Results.Problem(
                 statusCode: StatusCodes.Status409Conflict,
                 title: "Concurrent update",
@@ -50,7 +56,4 @@ internal sealed class ApiExceptionHandler : IExceptionHandler
 
     private static Dictionary<string, object?>? CodeExtension(string? code) =>
         code is null ? null : new Dictionary<string, object?> { ["code"] = code };
-
-    private static string ToCamelCase(string propertyName) =>
-        string.IsNullOrEmpty(propertyName) ? propertyName : char.ToLowerInvariant(propertyName[0]) + propertyName[1..];
 }

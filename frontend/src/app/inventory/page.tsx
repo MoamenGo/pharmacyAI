@@ -11,6 +11,9 @@ import { errorMessage } from "@/lib/errors";
 
 const SEARCH_DEBOUNCE_MS = 200;
 
+// Scanner codes are letters and digits with at least one digit and no spaces (EAN, Code 128).
+const looksLikeBarcode = (term: string) => /^[A-Za-z0-9-]{4,}$/.test(term) && /\d/.test(term);
+
 export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [drugs, setDrugs] = useState<DrugSummary[]>([]);
@@ -19,13 +22,19 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const receiveRef = useRef<HTMLInputElement>(null);
+  // Only the latest request may update the list or the panel; older responses are dropped.
+  const listSeq = useRef(0);
+  const selectSeq = useRef(0);
 
   const refreshList = useCallback(async (term: string) => {
+    const seq = ++listSeq.current;
     try {
-      setDrugs(await api.searchDrugs(term));
+      const result = await api.searchDrugs(term);
+      if (seq !== listSeq.current) return;
+      setDrugs(result);
       setError(null);
     } catch (e) {
-      setError(errorMessage(e));
+      if (seq === listSeq.current) setError(errorMessage(e));
     }
   }, []);
 
@@ -37,10 +46,12 @@ export default function InventoryPage() {
   useEffect(() => searchRef.current?.focus(), []);
 
   const select = async (id: string) => {
+    const seq = ++selectSeq.current;
     try {
-      setSelected(await api.getDrug(id));
+      const details = await api.getDrug(id);
+      if (seq === selectSeq.current) setSelected(details);
     } catch (e) {
-      setError(errorMessage(e));
+      if (seq === selectSeq.current) setError(errorMessage(e));
     }
   };
 
@@ -56,13 +67,17 @@ export default function InventoryPage() {
   const onSearchEnter = async () => {
     const term = search.trim();
     if (!term) return;
+    const seq = ++selectSeq.current;
     try {
       const found = await api.getDrugByBarcode(term);
+      if (seq !== selectSeq.current) return;
       if (found) {
         setSelected(found);
         receiveRef.current?.focus();
-      } else if (/^\d{6,}$/.test(term)) {
+      } else if (looksLikeBarcode(term)) {
         setNewDrugBarcode(term);
+      } else if (drugs.length === 0) {
+        setError("مفيش صنف بالاسم أو الباركود ده");
       }
     } catch (e) {
       setError(errorMessage(e));

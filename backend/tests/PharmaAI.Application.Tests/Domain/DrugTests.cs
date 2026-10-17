@@ -55,4 +55,16 @@ public class DrugTests
     public void Receiving_zero_is_rejected() =>
         Assert.Throws<DomainException>(() =>
             InventoryTestData.Panadol().ReceiveStock("B1", Expiry, 0, InventoryTestData.ReceivedAt));
+
+    [Fact]
+    public void Receiving_past_the_int_range_is_rejected_without_changing_the_batch()
+    {
+        var drug = InventoryTestData.Panadol();
+        drug.ReceiveStock("B1", Expiry, int.MaxValue - 1, InventoryTestData.ReceivedAt);
+
+        var ex = Assert.Throws<DomainException>(() => drug.ReceiveStock("B1", Expiry, 2, InventoryTestData.ReceivedAt));
+
+        Assert.Equal("stock.quantity_too_large", ex.Code);
+        Assert.Equal(int.MaxValue - 1, Assert.Single(drug.Batches).QuantityInSubUnits);
+    }
 }

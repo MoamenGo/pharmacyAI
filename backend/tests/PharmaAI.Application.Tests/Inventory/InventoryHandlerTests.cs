@@ -139,6 +139,50 @@ public sealed class InventoryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task ReceiveStock_retries_when_another_writer_inserts_the_same_batch_first()
+    {
+        var id = await CreateDrugAsync();
+
+        // Context A sees no batch yet; B inserts it before A saves, so A's insert hits the unique key and must merge.
+        await using var a = _database.CreateContext();
+        var interceptingDb = new BeforeSaveDbContext(a, () => ReceiveAsync(id, "B1", Today.AddMonths(6), packs: 1));
+
+        await new ReceiveStockCommandHandler(interceptingDb, Clock, Calendar).Handle(
+            new ReceiveStockCommand(id, "B1", Today.AddMonths(6), 2, 0), CancellationToken.None);
+
+        Assert.Equal(new Dictionary<string, int> { ["B1"] = 9 }, await StoredQuantitiesAsync());
+    }
+
+    [Fact]
+    public async Task ReceiveStock_retries_when_a_sale_spends_from_the_batch_first()
+    {
+        var id = await CreateDrugAsync();
+        await ReceiveAsync(id, "B1", Today.AddMonths(6), packs: 2);
+
+        await using var a = _database.CreateContext();
+        var interceptingDb = new BeforeSaveDbContext(a, async () =>
+        {
+            await using var b = _database.CreateContext();
+            await new DeductStockCommandHandler(b, Calendar).Handle(new DeductStockCommand(id, 4), CancellationToken.None);
+        });
+
+        await new ReceiveStockCommandHandler(interceptingDb, Clock, Calendar).Handle(
+            new ReceiveStockCommand(id, "B1", Today.AddMonths(6), 1, 0), CancellationToken.None);
+
+        Assert.Equal(5, (await StoredQuantitiesAsync())["B1"]);
+    }
+
+    [Fact]
+    public async Task CreateDrug_racing_on_the_same_barcode_raises_duplicate_key()
+    {
+        await using var a = _database.CreateContext();
+        var interceptingDb = new BeforeSaveDbContext(a, async () => { await CreateDrugAsync("6229999999999"); });
+
+        await Assert.ThrowsAsync<DuplicateKeyException>(() => new CreateDrugCommandHandler(interceptingDb, Clock, Calendar).Handle(
+            new CreateDrugCommand("دواء", null, "6229999999999", "علبة", "شريط", 1, 100), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task ListDrugs_finds_by_partial_arabic_name_or_exact_barcode_and_reports_stock()
     {
         var id = await CreateDrugAsync("6221111111111");

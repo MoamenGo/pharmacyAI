@@ -8,7 +8,7 @@ public sealed class GetDrugQueryValidator : AbstractValidator<GetDrugQuery>
     {
         RuleFor(q => q)
             .Must(q => q.Id.HasValue ^ !string.IsNullOrWhiteSpace(q.Barcode))
-            .WithName("lookup")
+            .OverridePropertyName("lookup")
             .WithMessage("Provide either an id or a barcode.");
     }
 }

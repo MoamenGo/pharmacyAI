@@ -48,7 +48,13 @@ public sealed class StockBatch
     internal void Add(int quantityInSubUnits)
     {
         EnsurePositive(quantityInSubUnits);
-        QuantityInSubUnits = checked(QuantityInSubUnits + quantityInSubUnits);
+
+        if ((long)QuantityInSubUnits + quantityInSubUnits > int.MaxValue)
+        {
+            throw new DomainException("stock.quantity_too_large", $"Batch {BatchNumber} cannot hold that many sub-units.");
+        }
+
+        QuantityInSubUnits += quantityInSubUnits;
         Version++;
     }
 

@@ -8,8 +8,10 @@ const STYLES = {
 
 const LABELS = { expired: "منتهي", soon: "قرب ينتهي", ok: null };
 
-export function ExpiryBadge({ date }: { date: string }) {
-  const level = expiryLevel(date);
+// `expired` comes from the server when known, since it decides expiry in Cairo time.
+export function ExpiryBadge({ date, expired }: { date: string; expired?: boolean }) {
+  const local = expiryLevel(date);
+  const level = expired === undefined ? local : expired ? "expired" : local === "expired" ? "soon" : local;
   return (
     <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-sm ${STYLES[level]}`} dir="ltr">
       {formatExpiry(date)}
