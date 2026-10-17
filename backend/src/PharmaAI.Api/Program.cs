@@ -14,7 +14,7 @@ builder.Configuration.Sources.Insert(0, new MemoryConfigurationSource { InitialD
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase);
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -36,6 +36,7 @@ app.UseCors(DesktopCorsPolicy);
 var api = app.MapGroup("/api");
 api.MapSystemEndpoints();
 api.MapSettingsEndpoints();
+api.MapInventoryEndpoints();
 
 app.Run();
 
