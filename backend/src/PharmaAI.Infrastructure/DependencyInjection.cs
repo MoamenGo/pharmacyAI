@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaAI.Application.Abstractions;
+using PharmaAI.Application.Sync;
+using PharmaAI.Application.Sync.Eta;
+using PharmaAI.Infrastructure.Sync;
 using PharmaAI.Infrastructure.Persistence;
 
 namespace PharmaAI.Infrastructure;
@@ -30,6 +33,15 @@ public static class DependencyInjection
 
         services.AddScoped<IPharmaDbContext>(sp => sp.GetRequiredService<PharmaDbContext>());
         services.AddScoped<IDatabaseDiagnostics, DatabaseDiagnostics>();
+
+        services.AddSingleton<SyncSignal>();
+        services.AddSingleton<ISyncTrigger>(sp => sp.GetRequiredService<SyncSignal>());
+        services.AddSingleton<EtaTokenCache>();
+        services.AddHttpClient<IEtaClient, EtaHttpClient>(c => c.Timeout = TimeSpan.FromSeconds(60));
+        if (configuration.GetValue("Sync:Worker", true))
+        {
+            services.AddHostedService<OutboxWorker>();
+        }
 
         return services;
     }

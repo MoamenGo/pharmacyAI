@@ -96,6 +96,61 @@ export interface DailySales {
   sales: { id: string; number: number; soldAtUtc: string; lineCount: number; totalPiasters: number }[];
 }
 
+export type EtaEnvironment = "preProduction" | "production";
+
+export interface EtaSettingsFields {
+  enabled: boolean;
+  environment: EtaEnvironment;
+  clientId: string;
+  posSerial: string;
+  posOsVersion: string;
+  posModelFramework: string;
+  rin: string;
+  companyTradeName: string;
+  branchCode: string;
+  governate: string;
+  regionCity: string;
+  street: string;
+  buildingNumber: string;
+  activityCode: string;
+}
+
+/** As read back: the two secrets only say whether they are stored. */
+export interface EtaSettings extends EtaSettingsFields {
+  hasClientSecret: boolean;
+  hasPresharedKey: boolean;
+  missingFields: string[];
+}
+
+/** As saved: an empty secret keeps the stored one. */
+export interface EtaSettingsInput extends EtaSettingsFields {
+  clientSecret: string | null;
+  presharedKey: string | null;
+}
+
+export type OutboxStatus = "pending" | "sent" | "rejected";
+
+export interface SyncProblem {
+  id: string;
+  saleNumber: number;
+  status: OutboxStatus;
+  attempts: number;
+  lastError: string | null;
+  createdAtUtc: string;
+  nextAttemptAtUtc: string;
+}
+
+export interface SyncStatus {
+  enabled: boolean;
+  missingFields: string[];
+  pending: number;
+  sent: number;
+  rejected: number;
+  oldestPendingAtUtc: string | null;
+  lastSentAtUtc: string | null;
+  problems: SyncProblem[];
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -119,7 +174,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(response.status, body.errors ?? {}, body.code ?? null, body);
   }
 
-  return (await response.json()) as T;
+  // 202/204 carry no body.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export const api = {
@@ -161,4 +218,15 @@ export const api = {
   createSale: (sale: NewSale) => request<Sale>("/api/sales", { method: "POST", body: JSON.stringify(sale) }),
 
   listSales: (date?: string) => request<DailySales>(`/api/sales${date ? `?date=${date}` : ""}`),
+
+  getSyncStatus: () => request<SyncStatus>("/api/sync/status"),
+
+  runSync: () => request<void>("/api/sync/run", { method: "POST" }),
+
+  retrySyncMessage: (id: string) => request<void>(`/api/sync/messages/${id}/retry`, { method: "POST" }),
+
+  getEtaSettings: () => request<EtaSettings>("/api/sync/eta-settings"),
+
+  saveEtaSettings: (settings: EtaSettingsInput) =>
+    request<EtaSettings>("/api/sync/eta-settings", { method: "PUT", body: JSON.stringify(settings) }),
 };

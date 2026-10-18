@@ -11,7 +11,10 @@ public sealed class UpsertSettingCommandValidator : AbstractValidator<UpsertSett
             .NotEmpty()
             .MaximumLength(AppSetting.KeyMaxLength)
             .Matches("^[a-z0-9]+(\\.[a-z0-9]+)*$")
-            .WithMessage("Key must be lowercase segments separated by dots, e.g. 'pharmacy.name'.");
+            .WithMessage("Key must be lowercase segments separated by dots, e.g. 'pharmacy.name'.")
+            .Must(key => !SettingKeys.IsReserved(key))
+            .WithErrorCode("settings.reserved")
+            .WithMessage("This setting has its own screen.");
 
         RuleFor(c => c.Value)
             .NotNull()

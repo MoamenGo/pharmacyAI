@@ -9,6 +9,9 @@ const MESSAGES: Record<string, string> = {
   "stock.quantity_too_large": "الكمية أكبر من المسموح للتشغيلة",
   "sale.empty": "الفاتورة فاضية، ضيف صنف الأول",
   "sale.insufficient_payment": "المبلغ المدفوع أقل من الإجمالي",
+  "eta.invalid_rin": "رقم التسجيل الضريبي أرقام بس",
+  "settings.reserved": "الإعداد ده ليه شاشته الخاصة",
+  "outbox.already_sent": "الإيصال ده اتقبل خلاص",
   "request.invalid": "البيانات المرسلة غير صحيحة",
   "conflict.duplicate": "البيانات دي متسجلة قبل كده، حدّث الصفحة وحاول تاني",
 };

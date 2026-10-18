@@ -5,6 +5,7 @@ using PharmaAI.Application.Abstractions;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
+using PharmaAI.Domain.Sync;
 
 namespace PharmaAI.Infrastructure.Persistence;
 
@@ -17,6 +18,8 @@ public sealed class PharmaDbContext(DbContextOptions<PharmaDbContext> options) :
     public DbSet<StockBatch> StockBatches => Set<StockBatch>();
 
     public DbSet<Sale> Sales => Set<Sale>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 

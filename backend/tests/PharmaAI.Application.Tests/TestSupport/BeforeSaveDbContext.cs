@@ -3,6 +3,7 @@ using PharmaAI.Application.Abstractions;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
+using PharmaAI.Domain.Sync;
 
 namespace PharmaAI.Application.Tests.TestSupport;
 
@@ -18,6 +19,8 @@ public sealed class BeforeSaveDbContext(IPharmaDbContext inner, Func<Task> befor
     public DbSet<StockBatch> StockBatches => inner.StockBatches;
 
     public DbSet<Sale> Sales => inner.Sales;
+
+    public DbSet<OutboxMessage> OutboxMessages => inner.OutboxMessages;
 
     public void ClearChangeTracker() => inner.ClearChangeTracker();
 
