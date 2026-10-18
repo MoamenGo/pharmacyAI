@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "الرئيسية" },
   { href: "/pos/", label: "البيع" },
   { href: "/inventory/", label: "المخزون" },
+  { href: "/sync/", label: "المزامنة" },
 ];
 
 export function NavBar() {

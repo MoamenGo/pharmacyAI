@@ -1,0 +1,142 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { ShortcutBar } from "@/components/ShortcutBar";
+import { ETA_FIELD_LABELS, EtaSettingsForm } from "@/components/sync/EtaSettingsForm";
+import { ProblemList } from "@/components/sync/ProblemList";
+import { useFunctionKeys } from "@/hooks/useFunctionKeys";
+import { api, type SyncStatus } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
+import { formatCairoDateTime } from "@/lib/format";
+
+const POLL_MS = 5000;
+/** ETA refuses receipts issued more than 24 hours ago; warn well before that. */
+const LATE_WARNING_HOURS = 12;
+
+export default function SyncPage() {
+  const [status, setStatus] = useState<SyncStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      setStatus(await api.getSyncStatus());
+      setError(null);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => void refresh(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
+  const syncNow = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await api.runSync();
+      await refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const retry = async (id: string) => {
+    setRetrying(id);
+    try {
+      await api.retrySyncMessage(id);
+      await refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setRetrying(null);
+    }
+  };
+
+  useFunctionKeys({ F5: () => void syncNow() });
+
+  const pendingHours = status?.oldestPendingAtUtc
+    ? (Date.now() - Date.parse(status.oldestPendingAtUtc)) / 3_600_000
+    : 0;
+
+  return (
+    <main className="mx-auto max-w-5xl space-y-6 p-6 pb-20">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">مزامنة الإيصالات مع مصلحة الضرائب</h1>
+        <button
+          type="button"
+          onClick={() => void syncNow()}
+          disabled={syncing}
+          className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50"
+        >
+          زامن دلوقتي (F5)
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="rounded-lg bg-rose-950 px-4 py-2 text-rose-300">
+          {error}
+        </p>
+      )}
+
+      {status && !status.enabled && (
+        <p role="status" className="rounded-lg bg-amber-950 px-4 py-2 text-amber-300">
+          الإرسال للضرائب مقفول. الفواتير بتتحفظ في الطابور وهتتبعت لما تفعّله من الإعدادات تحت.
+        </p>
+      )}
+
+      {status && status.enabled && status.missingFields.length > 0 && (
+        <p role="status" className="rounded-lg bg-amber-950 px-4 py-2 text-amber-300">
+          ناقص بيانات قبل ما نقدر نبعت:{" "}
+          {status.missingFields.map((f) => ETA_FIELD_LABELS[f] ?? f).join("، ")}
+        </p>
+      )}
+
+      {status && status.pending > 0 && pendingHours >= LATE_WARNING_HOURS && (
+        <p role="alert" className="rounded-lg bg-rose-950 px-4 py-2 text-rose-300">
+          فيه إيصال مستني من {Math.floor(pendingHours)} ساعة. الضرائب بترفض أي إيصال عدّى عليه 24 ساعة، اتأكد من النت والإعدادات.
+        </p>
+      )}
+
+      {status && (
+        <section className="grid gap-4 sm:grid-cols-3" data-testid="sync-summary">
+          <Stat label="مستني الإرسال" value={status.pending} tone="text-amber-300" />
+          <Stat label="اتبعت" value={status.sent} tone="text-emerald-400" />
+          <Stat label="مرفوض" value={status.rejected} tone="text-rose-400" />
+          <p className="text-sm text-slate-400 sm:col-span-3">
+            آخر إرسال ناجح:{" "}
+            {status.lastSentAtUtc ? (
+              <span dir="ltr" className="font-mono">{formatCairoDateTime(status.lastSentAtUtc)}</span>
+            ) : (
+              "لسه مفيش"
+            )}
+          </p>
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">إيصالات محتاجة انتباه</h2>
+        <ProblemList problems={status?.problems ?? []} retrying={retrying} onRetry={(id) => void retry(id)} />
+      </section>
+
+      <EtaSettingsForm onSaved={() => void refresh()} />
+
+      <ShortcutBar shortcuts={[{ key: "F5", label: "زامن دلوقتي" }]} />
+    </main>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <div className="text-sm text-slate-400">{label}</div>
+      <div className={`font-mono text-3xl font-bold ${tone}`}>{value}</div>
+    </div>
+  );
+}

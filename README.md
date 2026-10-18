@@ -67,6 +67,7 @@ Override it with `--Database:Path=<file>`.
 | Sale | F8 | Remove the selected line |
 | Sale | F9 | Enter the amount paid (empty means exact change) |
 | Sale | F10 | Save and print the receipt; after a sale, reprint it |
+| Sync | F5 | Send queued receipts to the tax authority now |
 
 ## Inventory rules
 
@@ -84,3 +85,19 @@ Override it with `--Database:Path=<file>`.
 - Lines sell whole packs at the public price or loose strips at the strip price (pack price ÷ strips, rounded to the piaster).
 - Receipt numbers are sequential. If two tills save at once, the second retries with the next number and fresh stock.
 - The receipt is printed with the system print dialog on 80 mm thermal paper; the pharmacy name comes from the Home screen.
+
+## Sync and the ETA e-receipt
+
+- Every sale writes an outbox row in the same transaction, so a saved sale is never lost from the tax queue,
+  even when the machine is offline. Sales that existed before the outbox was added are queued by the migration.
+- A background worker wakes after each sale (and every 30 s) and sends due receipts to the Egyptian Tax Authority
+  e-receipt API v1.2. Failures retry with backoff (30 s doubling, capped at 1 h); the Sync screen lists them.
+- Receipts are built in sale-number order and chained with `previousUUID`. A built receipt is frozen, so a resend
+  carries the same UUID. A receipt ETA rejects can be corrected and resent from the Sync screen; it is rebuilt with
+  `referenceOldUUID` pointing at the rejected one.
+- Medicines are sent VAT-exempt (`T1` / `V003`, rate 0), packs as `BOX` and strips as `EA`, item code = the GS1 barcode.
+- Settings live on the Sync screen. Sending stays off until it is enabled and every field is filled.
+  The client secret and preshared key are never returned by the API; leave them empty to keep the saved values.
+- Set `Sync:Worker=false` to run the API without the background worker (tests do this).
+- Not yet: polling ETA for each receipt's final Valid/Invalid state after it is accepted, and signatures.
+  ETA rejects receipts issued more than 24 hours earlier, so keep the till online at least once a day.
