@@ -26,7 +26,10 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     LastError = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
                     SentAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Document = table.Column<string>(type: "TEXT", nullable: true),
-                    ExternalId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true)
+                    ExternalId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    PreviousExternalId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    FirstExternalId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    ReplacedExternalId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {

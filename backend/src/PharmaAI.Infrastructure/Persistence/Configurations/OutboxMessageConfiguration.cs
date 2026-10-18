@@ -16,6 +16,9 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
         builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(m => m.LastError).HasMaxLength(OutboxMessage.ErrorMaxLength);
         builder.Property(m => m.ExternalId).HasMaxLength(100);
+        builder.Property(m => m.PreviousExternalId).HasMaxLength(100);
+        builder.Property(m => m.FirstExternalId).HasMaxLength(100);
+        builder.Property(m => m.ReplacedExternalId).HasMaxLength(100);
 
         // One message per subject and kind: a sale is never queued twice.
         builder.HasIndex(m => new { m.Kind, m.SubjectId }).IsUnique();

@@ -43,11 +43,20 @@ public sealed class OutboxMessage
 
     public DateTime? SentAtUtc { get; private set; }
 
-    /// <summary>The document as first built for sending; retries resend exactly this.</summary>
+    /// <summary>The document as built for sending; retries resend exactly this text.</summary>
     public string? Document { get; private set; }
 
-    /// <summary>The receiving system's id for the document (the receipt UUID for ETA).</summary>
+    /// <summary>The receiving system's id for the current document (the receipt UUID for ETA).</summary>
     public string? ExternalId { get; private set; }
+
+    /// <summary>The id of the message before this one in the chain (ETA previousUUID); empty for the first.</summary>
+    public string? PreviousExternalId { get; private set; }
+
+    /// <summary>The id this message was first issued under. Later messages chain to it, even after a correction.</summary>
+    public string? FirstExternalId { get; private set; }
+
+    /// <summary>When a rejected document is rebuilt, the id it replaces (ETA referenceOldUUID).</summary>
+    public string? ReplacedExternalId { get; private set; }
 
     public static OutboxMessage ForEtaReceipt(Guid saleId, long saleNumber, DateTime createdAtUtc) =>
         new()
@@ -63,16 +72,26 @@ public sealed class OutboxMessage
 
     public bool IsDue(DateTime nowUtc) => Status == OutboxStatus.Pending && NextAttemptAtUtc <= nowUtc;
 
-    /// <summary>Freezes the document and its id the first time it is built.</summary>
-    public void AttachDocument(string document, string externalId)
+    /// <summary>
+    /// Freezes the document and its id. The chain position is fixed by the first build:
+    /// a rebuilt document must name the same predecessor.
+    /// </summary>
+    public void AttachDocument(string document, string externalId, string previousExternalId)
     {
         if (Document is not null)
         {
             throw new DomainException("outbox.document_frozen", "The document was already built and cannot change.");
         }
 
+        if (PreviousExternalId is not null && PreviousExternalId != previousExternalId)
+        {
+            throw new DomainException("outbox.chain_changed", "A rebuilt document must keep its place in the chain.");
+        }
+
         Document = document;
         ExternalId = externalId;
+        PreviousExternalId = previousExternalId;
+        FirstExternalId ??= externalId;
     }
 
     public void MarkSent(DateTime nowUtc)
@@ -102,21 +121,26 @@ public sealed class OutboxMessage
         NextAttemptAtUtc = nowUtc + delay;
     }
 
-    /// <summary>Sends a rejected message again (after a person fixed the cause) or a pending one right away.</summary>
-    public void RetryNow(DateTime nowUtc, bool rebuildDocument)
+    /// <summary>
+    /// Sends the message again right away. A rejected document is rebuilt (after a person fixed the
+    /// cause) under a new id that references the rejected one; a pending one is resent as it is.
+    /// </summary>
+    public void RetryNow(DateTime nowUtc)
     {
         if (Status == OutboxStatus.Sent)
         {
             throw new DomainException("outbox.already_sent", "This message was already accepted.");
         }
 
-        Status = OutboxStatus.Pending;
-        NextAttemptAtUtc = nowUtc;
-        if (rebuildDocument)
+        if (Status == OutboxStatus.Rejected && Document is not null)
         {
+            ReplacedExternalId = ExternalId;
             Document = null;
             ExternalId = null;
         }
+
+        Status = OutboxStatus.Pending;
+        NextAttemptAtUtc = nowUtc;
     }
 
     private void EnsurePending()

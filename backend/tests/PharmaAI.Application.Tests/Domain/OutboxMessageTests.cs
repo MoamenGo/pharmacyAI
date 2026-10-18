@@ -35,25 +35,39 @@ public class OutboxMessageTests
         var message = NewMessage();
         message.MarkSent(Now);
 
-        Assert.Equal("outbox.already_sent", Assert.Throws<DomainException>(() => message.RetryNow(Now, rebuildDocument: false)).Code);
+        Assert.Equal("outbox.already_sent", Assert.Throws<DomainException>(() => message.RetryNow(Now)).Code);
         Assert.Throws<DomainException>(() => message.MarkSent(Now));
         Assert.False(message.IsDue(Now));
     }
 
     [Fact]
-    public void A_rejected_message_waits_for_a_person_then_can_be_rebuilt()
+    public void A_rejected_message_waits_for_a_person_then_is_rebuilt_in_the_same_chain_position()
     {
         var message = NewMessage();
-        message.AttachDocument("{}", "uuid-1");
+        message.AttachDocument("{}", "uuid-1", "uuid-0");
         message.MarkRejected("bad item code", Now);
         Assert.False(message.IsDue(Now.AddDays(1)));
 
-        message.RetryNow(Now, rebuildDocument: true);
+        message.RetryNow(Now);
 
         Assert.True(message.IsDue(Now));
         Assert.Null(message.Document);
-        message.AttachDocument("{}", "uuid-2");
-        Assert.Equal("uuid-2", message.ExternalId);
+        Assert.Equal("uuid-1", message.ReplacedExternalId);
+        Assert.Throws<DomainException>(() => message.AttachDocument("{}", "uuid-2", "uuid-other"));
+        message.AttachDocument("{}", "uuid-2", "uuid-0");
+        Assert.Equal(("uuid-2", "uuid-1"), (message.ExternalId, message.FirstExternalId));
+    }
+
+    [Fact]
+    public void Retrying_a_pending_message_keeps_its_document()
+    {
+        var message = NewMessage();
+        message.AttachDocument("{}", "uuid-1", "");
+        message.MarkFailedTemporarily("offline", Now);
+
+        message.RetryNow(Now);
+
+        Assert.Equal(("uuid-1", true), (message.ExternalId, message.IsDue(Now)));
     }
 
     [Fact]
@@ -61,8 +75,8 @@ public class OutboxMessageTests
         Assert.Throws<DomainException>(() =>
         {
             var message = NewMessage();
-            message.AttachDocument("{}", "uuid-1");
-            message.AttachDocument("{}", "uuid-2");
+            message.AttachDocument("{}", "uuid-1", "");
+            message.AttachDocument("{}", "uuid-2", "");
         });
 
     [Fact]

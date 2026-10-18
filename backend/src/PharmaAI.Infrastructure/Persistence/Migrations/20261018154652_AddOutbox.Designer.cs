@@ -11,7 +11,7 @@ using PharmaAI.Infrastructure.Persistence;
 namespace PharmaAI.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PharmaDbContext))]
-    [Migration("20261018153949_AddOutbox")]
+    [Migration("20261018154652_AddOutbox")]
     partial class AddOutbox
     {
         /// <inheritdoc />
@@ -261,6 +261,10 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FirstExternalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -271,6 +275,14 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PreviousExternalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReplacedExternalId")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("SentAtUtc")
