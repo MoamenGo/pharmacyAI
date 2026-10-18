@@ -4,12 +4,13 @@ using PharmaAI.Application.Abstractions;
 using PharmaAI.Application.Common;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
+using PharmaAI.Domain.Sync;
 
 namespace PharmaAI.Application.Sales.Commands.CreateSale;
 
 /// <summary>
 /// Saves a sale and its stock deductions in one SaveChanges, so either the whole receipt is
-/// recorded and every line's stock is taken, or nothing changes. A concurrent write to the same
+/// recorded, every line's stock is taken and the receipt is queued for sync, or nothing changes. A concurrent write to the same
 /// batches, or another till taking the same receipt number, makes us retry on fresh data.
 /// </summary>
 public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider clock, PharmacyCalendar calendar)
@@ -36,8 +37,11 @@ public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider c
                 .ToList();
 
             var number = (await db.Sales.MaxAsync(s => (long?)s.Number, cancellationToken) ?? 0) + 1;
-            var sale = Sale.Create(number, clock.GetUtcNow().UtcDateTime, calendar.Today, items, Piasters.ToPounds(request.PaidPiasters));
+            var now = clock.GetUtcNow().UtcDateTime;
+            var sale = Sale.Create(number, now, calendar.Today, items, Piasters.ToPounds(request.PaidPiasters));
             db.Sales.Add(sale);
+            // Same SaveChanges as the sale: a receipt can never be saved without being queued for the tax authority.
+            db.OutboxMessages.Add(OutboxMessage.ForEtaReceipt(sale.Id, sale.Number, now));
 
             try
             {
