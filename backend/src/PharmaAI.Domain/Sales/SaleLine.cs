@@ -48,6 +48,14 @@ public sealed class SaleLine
 
     public decimal NetTotal => LineTotal - Discount;
 
+    /// <summary>How much of <see cref="Quantity"/> came back on returns.</summary>
+    public int ReturnedQuantity { get; private set; }
+
+    /// <summary>What was refunded for those returns.</summary>
+    public decimal ReturnedAmount { get; private set; }
+
+    public int ReturnableQuantity => Quantity - ReturnedQuantity;
+
     public IReadOnlyCollection<SaleLineBatch> Batches => _batches;
 
     internal static SaleLine Create(Guid saleId, int lineNumber, SaleItem item, DateOnly today)
@@ -88,4 +96,48 @@ public sealed class SaleLine
     }
 
     internal void ApplyDiscount(decimal discount) => Discount = discount;
+
+    /// <summary>
+    /// Records <paramref name="quantity"/> (in the line's unit) coming back and works out its refund: its share of the
+    /// net amount, or exactly what is left of it when the line is now fully returned, so the refunds never add up to more
+    /// than was paid. Returns the refund and the stock to put back, batch by batch.
+    /// </summary>
+    internal (decimal Amount, int QuantityInSubUnits, IReadOnlyList<(Guid BatchId, int QuantityInSubUnits)> Restock) Return(int quantity)
+    {
+        if (quantity < 1 || quantity > ReturnableQuantity)
+        {
+            throw new DomainException(
+                "return.invalid_quantity",
+                $"Line {LineNumber} can take back between 1 and {ReturnableQuantity} {UnitName}.");
+        }
+
+        var perUnit = QuantityInSubUnits / Quantity;
+        var alreadyBack = ReturnedQuantity * perUnit;
+        var subUnits = quantity * perUnit;
+
+        ReturnedQuantity += quantity;
+        var amount = ReturnedQuantity == Quantity
+            ? NetTotal - ReturnedAmount
+            : Math.Round(NetTotal * quantity / Quantity, 2, MidpointRounding.AwayFromZero);
+        ReturnedAmount += amount;
+
+        // Stock goes back to the batches it came from, latest expiry first; earlier returns already refilled those.
+        var restock = new List<(Guid, int)>();
+        var skip = alreadyBack;
+        var left = subUnits;
+        foreach (var batch in _batches.OrderByDescending(b => b.ExpiryDate).ThenByDescending(b => b.BatchNumber, StringComparer.Ordinal))
+        {
+            var available = batch.QuantityInSubUnits;
+            var skipped = Math.Min(skip, available);
+            skip -= skipped;
+            var take = Math.Min(left, available - skipped);
+            if (take > 0)
+            {
+                restock.Add((batch.StockBatchId, take));
+                left -= take;
+            }
+        }
+
+        return (amount, subUnits, restock);
+    }
 }

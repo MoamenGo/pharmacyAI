@@ -19,6 +19,10 @@ internal sealed class SaleLineConfiguration : IEntityTypeConfiguration<SaleLine>
         builder.Property(l => l.LineTotal).HasPrecision(18, 2).IsRequired();
         builder.Property(l => l.Discount).HasPrecision(18, 2).HasDefaultValue(0m).IsRequired();
         builder.Ignore(l => l.NetTotal);
+        builder.Ignore(l => l.ReturnableQuantity);
+        builder.Property(l => l.ReturnedAmount).HasPrecision(18, 2).HasDefaultValue(0m).IsRequired();
+        // Two returns of the same line at once: the second sees a changed count and retries on fresh data.
+        builder.Property(l => l.ReturnedQuantity).HasDefaultValue(0).IsConcurrencyToken();
 
         builder.HasIndex(l => new { l.SaleId, l.LineNumber }).IsUnique();
         builder.HasOne<Drug>().WithMany().HasForeignKey(l => l.DrugId).OnDelete(DeleteBehavior.Restrict);

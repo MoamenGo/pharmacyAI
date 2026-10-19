@@ -97,6 +97,10 @@ export interface SaleLine {
   lineTotalPiasters: number;
   discountPiasters: number;
   batches: { batchNumber: string; expiryDate: string; quantityInSubUnits: number }[];
+  id: string;
+  /** How much of quantity (in the line's unit) came back on returns, and what was refunded for it. */
+  returnedQuantity: number;
+  returnedPiasters: number;
 }
 
 export interface Sale {
@@ -130,6 +134,11 @@ export interface DailySales {
   creditPiasters: number;
   /** Cash customers paid towards their balances. */
   collectedPiasters: number;
+  returnsCount: number;
+  returnsPiasters: number;
+  /** Cash handed back for returns. */
+  cashRefundsPiasters: number;
+  cardRefundsPiasters: number;
   sales: {
     id: string;
     number: number;
@@ -139,6 +148,23 @@ export interface DailySales {
     customerName: string | null;
     totalPiasters: number;
   }[];
+}
+
+export interface SaleReturn {
+  id: string;
+  number: number;
+  saleId: string;
+  saleNumber: number;
+  returnedAtUtc: string;
+  businessDate: string;
+  paymentMethod: PaymentMethod;
+  totalPiasters: number;
+  /** Handed back: cash, or a card refund for a card sale. */
+  refundedPiasters: number;
+  /** Taken off the customer's balance (credit sales). */
+  creditedPiasters: number;
+  reason: string | null;
+  lines: { saleLineId: string; drugNameAr: string; unit: SaleUnit; unitName: string; quantity: number; amountPiasters: number }[];
 }
 
 export interface Customer {
@@ -286,6 +312,22 @@ export const api = {
   createSale: (sale: NewSale) => request<Sale>("/api/sales", { method: "POST", body: JSON.stringify(sale) }),
 
   listSales: (date?: string) => request<DailySales>(`/api/sales${date ? `?date=${date}` : ""}`),
+
+  getSale: (id: string) => request<Sale>(`/api/sales/${id}`),
+
+  getSaleByNumber: async (number: number): Promise<Sale | null> => {
+    try {
+      return await request<Sale>(`/api/sales/by-number/${number}`);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
+  },
+
+  listReturnsForSale: (saleId: string) => request<SaleReturn[]>(`/api/returns?saleId=${saleId}`),
+
+  createReturn: (saleId: string, items: { saleLineId: string; quantity: number }[], reason: string | null) =>
+    request<SaleReturn>("/api/returns", { method: "POST", body: JSON.stringify({ saleId, items, reason }) }),
 
   listCustomers: (search: string, owingOnly = false) =>
     request<Customer[]>(`/api/customers?search=${encodeURIComponent(search)}${owingOnly ? "&owing=true" : ""}`),

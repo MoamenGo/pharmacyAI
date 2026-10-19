@@ -57,6 +57,23 @@ public sealed class Customer
         Version++;
     }
 
+    /// <summary>
+    /// Takes a returned credit sale's refund off the balance, as far as the balance goes. Returns how much was taken off;
+    /// the rest was already paid and is handed back in cash.
+    /// </summary>
+    public decimal CreditReturn(decimal amount)
+    {
+        if (amount < 0)
+        {
+            throw new DomainException("customer.invalid_amount", "A refund cannot be negative.");
+        }
+
+        var credited = Math.Min(amount, Balance);
+        Balance -= credited;
+        Version++;
+        return credited;
+    }
+
     public CustomerPayment RecordPayment(decimal amount, DateTime paidAtUtc, DateOnly businessDate, string? note)
     {
         if (amount <= 0)

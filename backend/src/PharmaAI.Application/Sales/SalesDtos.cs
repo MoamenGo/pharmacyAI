@@ -15,7 +15,10 @@ public sealed record SaleLineDto(
     long UnitPricePiasters,
     long LineTotalPiasters,
     long DiscountPiasters,
-    IReadOnlyList<SaleLineBatchDto> Batches);
+    IReadOnlyList<SaleLineBatchDto> Batches,
+    Guid Id,
+    int ReturnedQuantity,
+    long ReturnedPiasters);
 
 public sealed record SaleDto(
     Guid Id,
@@ -46,7 +49,10 @@ public sealed record SaleSummaryDto(
 /// <param name="CashPiasters">Cash taken for sales: cash sales plus what was paid up front on credit sales.</param>
 /// <param name="CardPiasters">Card sales.</param>
 /// <param name="CreditPiasters">Sales added to customers' balances.</param>
-/// <param name="CollectedPiasters">Cash customers paid towards their balances; the drawer holds this plus <paramref name="CashPiasters"/>.</param>
+/// <param name="CollectedPiasters">Cash customers paid towards their balances; the drawer holds this plus <paramref name="CashPiasters"/>, less <paramref name="CashRefundsPiasters"/>.</param>
+/// <param name="ReturnsPiasters">The value of everything returned that day, whichever day it was sold.</param>
+/// <param name="CashRefundsPiasters">Cash handed back for returns.</param>
+/// <param name="CardRefundsPiasters">Card refunds for returns of card sales.</param>
 public sealed record DailySalesDto(
     DateOnly Date,
     int Count,
@@ -56,4 +62,8 @@ public sealed record DailySalesDto(
     long CardPiasters,
     long CreditPiasters,
     long CollectedPiasters,
+    int ReturnsCount,
+    long ReturnsPiasters,
+    long CashRefundsPiasters,
+    long CardRefundsPiasters,
     IReadOnlyList<SaleSummaryDto> Sales);

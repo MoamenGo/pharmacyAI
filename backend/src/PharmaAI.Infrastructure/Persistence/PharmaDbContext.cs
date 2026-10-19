@@ -26,6 +26,8 @@ public sealed class PharmaDbContext(DbContextOptions<PharmaDbContext> options) :
 
     public DbSet<CustomerPayment> CustomerPayments => Set<CustomerPayment>();
 
+    public DbSet<SaleReturn> SaleReturns => Set<SaleReturn>();
+
     public void ClearChangeTracker() => ChangeTracker.Clear();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

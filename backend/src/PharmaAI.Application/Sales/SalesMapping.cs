@@ -37,6 +37,9 @@ internal static class SalesMapping
                     l.Batches
                         .OrderBy(b => b.ExpiryDate)
                         .Select(b => new SaleLineBatchDto(b.BatchNumber, b.ExpiryDate, b.QuantityInSubUnits))
-                        .ToList()))
+                        .ToList(),
+                    l.Id,
+                    l.ReturnedQuantity,
+                    Piasters.FromPounds(l.ReturnedAmount)))
                 .ToList());
 }

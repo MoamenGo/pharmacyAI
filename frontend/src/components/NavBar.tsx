@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/", label: "الرئيسية" },
   { href: "/pos/", label: "البيع" },
   { href: "/inventory/", label: "المخزون" },
+  { href: "/sales/", label: "المبيعات" },
   { href: "/customers/", label: "العملاء" },
   { href: "/sync/", label: "المزامنة", etaOnly: true },
   { href: "/settings/", label: "الإعدادات" },
