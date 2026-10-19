@@ -12,11 +12,13 @@ public sealed class SalesApiTests : IDisposable
 
     private sealed record Drug(Guid Id, int SellableQuantityInSubUnits);
 
-    private sealed record Line(int LineNumber, string DrugNameAr, string Unit, string UnitName, int Quantity, long LineTotalPiasters);
+    private sealed record Line(Guid Id, int LineNumber, string DrugNameAr, string Unit, string UnitName, int Quantity, long LineTotalPiasters, int ReturnedQuantity);
+
+    private sealed record Return(long Number, long SaleNumber, long TotalPiasters, long RefundedPiasters);
 
     private sealed record Sale(Guid Id, long Number, long TotalPiasters, long PaidPiasters, long ChangePiasters, List<Line> Lines);
 
-    private sealed record Day(int Count, long TotalPiasters);
+    private sealed record Day(int Count, long TotalPiasters, int ReturnsCount = 0, long CashRefundsPiasters = 0);
 
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "pharmaai-tests", Guid.NewGuid().ToString("N"));
     private readonly WebApplicationFactory<Program> _factory;
@@ -65,6 +67,28 @@ public sealed class SalesApiTests : IDisposable
 
         Assert.Equal(sale.Id, (await _client.GetFromJsonAsync<Sale>(response.Headers.Location))!.Id);
         Assert.Equal((1, 6000L), (await _client.GetFromJsonAsync<Day>("/api/sales"))! is { } day ? (day.Count, day.TotalPiasters) : default);
+    }
+
+    [Fact]
+    public async Task A_receipt_found_by_number_can_be_partly_returned_but_not_beyond_what_was_sold()
+    {
+        var id = await StockedDrugAsync();
+        var sold = (await (await SellAsync(10_000, new { drugId = id, unit = "subUnit", quantity = 3 })).Content.ReadFromJsonAsync<Sale>())!;
+
+        var sale = (await _client.GetFromJsonAsync<Sale>($"/api/sales/by-number/{sold.Number}"))!;
+        var lineId = sale.Lines.Single().Id;
+        var created = await _client.PostAsJsonAsync("/api/returns", new { saleId = sale.Id, items = new[] { new { saleLineId = lineId, quantity = 2 } }, reason = "منتهي" });
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(new Return(1, sold.Number, 3000, 3000), await created.Content.ReadFromJsonAsync<Return>());
+        Assert.Equal(2, (await _client.GetFromJsonAsync<Sale>($"/api/sales/{sale.Id}"))!.Lines.Single().ReturnedQuantity);
+        Assert.Equal(5, (await _client.GetFromJsonAsync<Created>($"/api/drugs/{id}"))!.Drug.SellableQuantityInSubUnits);
+        Assert.Equal((1, 3000L), (await _client.GetFromJsonAsync<Day>("/api/sales"))! is { } day ? (day.ReturnsCount, day.CashRefundsPiasters) : default);
+
+        var tooMany = await _client.PostAsJsonAsync("/api/returns", new { saleId = sale.Id, items = new[] { new { saleLineId = lineId, quantity = 2 } } });
+        Assert.Equal(HttpStatusCode.Conflict, tooMany.StatusCode);
+        Assert.Equal("return.invalid_quantity", (await ProblemAsync(tooMany)).GetProperty("code").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync("/api/sales/by-number/999")).StatusCode);
     }
 
     [Fact]

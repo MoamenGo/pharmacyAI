@@ -279,6 +279,18 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.Property<int>("QuantityInSubUnits")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("ReturnedAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("ReturnedQuantity")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<Guid>("SaleId")
                         .HasColumnType("TEXT");
 
@@ -335,6 +347,110 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.HasIndex("StockBatchId");
 
                     b.ToTable("SaleLineBatches", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditedToAccount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Number")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ReturnedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SaleNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("SaleReturns", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DrugId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DrugNameAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QuantityInSubUnits")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SaleLineId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SaleReturnId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UnitName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DrugId");
+
+                    b.HasIndex("SaleLineId");
+
+                    b.HasIndex("SaleReturnId");
+
+                    b.ToTable("SaleReturnLines", (string)null);
                 });
 
             modelBuilder.Entity("PharmaAI.Domain.Sync.OutboxMessage", b =>
@@ -462,6 +578,41 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleReturn", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PharmaAI.Domain.Sales.Sale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleReturnLine", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Inventory.Drug", null)
+                        .WithMany()
+                        .HasForeignKey("DrugId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PharmaAI.Domain.Sales.SaleLine", null)
+                        .WithMany()
+                        .HasForeignKey("SaleLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PharmaAI.Domain.Sales.SaleReturn", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SaleReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PharmaAI.Domain.Inventory.Drug", b =>
                 {
                     b.Navigation("Batches");
@@ -475,6 +626,11 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLine", b =>
                 {
                     b.Navigation("Batches");
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.SaleReturn", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

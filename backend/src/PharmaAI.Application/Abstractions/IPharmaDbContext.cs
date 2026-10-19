@@ -23,6 +23,8 @@ public interface IPharmaDbContext
 
     DbSet<CustomerPayment> CustomerPayments { get; }
 
+    DbSet<SaleReturn> SaleReturns { get; }
+
     /// <summary>Forgets every tracked entity so the next query reads fresh rows (used when retrying a conflict).</summary>
     void ClearChangeTracker();
 

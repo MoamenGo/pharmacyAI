@@ -69,6 +69,8 @@ Override it with `--Database:Path=<file>`.
 | Sale | F8 | Remove the selected line |
 | Sale | F9 | Enter the amount paid (cash: empty means exact change; credit: what is paid now) |
 | Sale | F10 | Save and print the receipt; after a sale, reprint it |
+| Sales | F3 | Open a receipt by number |
+| Sales | F9 | Return the quantities entered on the open receipt |
 | Customers | F2 | Add a customer |
 | Customers | F3 | Focus search (name or phone) |
 | Customers | F9 | Enter a payment for the selected customer |
@@ -100,6 +102,18 @@ Override it with `--Database:Path=<file>`.
   piasters go to the biggest line), and each line's share is sent to ETA as a commercial discount.
 - The day's sales list splits takings into cash, card, credit and account payments.
 - The receipt is printed with the system print dialog on 80 mm thermal paper; the pharmacy name comes from the Home screen.
+
+## Returns
+
+- The Sales screen lists a day's receipts with its totals; a receipt opens by clicking it or typing its number (F3).
+- Any part of a receipt can come back, in the unit it was sold in, until everything on it has been returned (F9).
+  Stock goes back into the batches it was sold from, latest expiry first, even if they have expired since.
+- The refund is the returned share of the line's amount after discount; the last return of a line gets exactly what is
+  left, so refunds never add up to more than was paid. A cash sale is refunded in cash and a card sale on the card.
+  On a credit sale the refund first comes off the customer's balance and only the rest is paid back in cash.
+- The day's totals show returns and cash refunds, and what should be in the drawer: cash sales and payments collected
+  from customers, less cash refunds.
+- Not yet: returns are not sent to ETA as return receipts.
 
 ## Sync and the ETA e-receipt
 

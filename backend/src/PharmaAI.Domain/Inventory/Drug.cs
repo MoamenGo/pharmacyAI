@@ -101,6 +101,14 @@ public sealed class Drug
         return batch;
     }
 
+    /// <summary>Puts returned stock back into the batch it was sold from, expired or not.</summary>
+    internal void Restock(Guid batchId, int quantityInSubUnits)
+    {
+        var batch = _batches.SingleOrDefault(b => b.Id == batchId)
+            ?? throw new DomainException("return.batch_missing", $"Batch {batchId} of drug {Id} was not loaded.");
+        batch.Add(quantityInSubUnits);
+    }
+
     /// <summary>
     /// Takes <paramref name="quantityInSubUnits"/> from the batches that expire first (FEFO),
     /// skipping expired batches. Either the whole quantity is taken or nothing is.

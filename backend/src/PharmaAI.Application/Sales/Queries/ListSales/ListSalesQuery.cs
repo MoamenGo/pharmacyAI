@@ -39,6 +39,12 @@ public sealed class ListSalesQueryHandler(IPharmaDbContext db, PharmacyCalendar 
             .Select(p => p.Amount)
             .ToListAsync(cancellationToken);
 
+        var returns = await db.SaleReturns
+            .AsNoTracking()
+            .Where(r => r.BusinessDate == date)
+            .Select(r => new { r.PaymentMethod, r.Total, r.CreditedToAccount })
+            .ToListAsync(cancellationToken);
+
         // SQLite stores decimals as TEXT and cannot SUM them exactly, so the day's totals are added up here.
         decimal SumOf(PaymentMethod method, Func<decimal, decimal, decimal> amount) =>
             sales.Where(s => s.PaymentMethod == method).Sum(s => amount(s.Total, s.Paid));
@@ -56,6 +62,10 @@ public sealed class ListSalesQueryHandler(IPharmaDbContext db, PharmacyCalendar 
             Piasters.FromPounds(SumOf(PaymentMethod.Card, (total, _) => total)),
             Piasters.FromPounds(SumOf(PaymentMethod.Credit, (total, paid) => total - paid)),
             Piasters.FromPounds(collected.Sum()),
+            returns.Count,
+            Piasters.FromPounds(returns.Sum(r => r.Total)),
+            Piasters.FromPounds(returns.Where(r => r.PaymentMethod != PaymentMethod.Card).Sum(r => r.Total - r.CreditedToAccount)),
+            Piasters.FromPounds(returns.Where(r => r.PaymentMethod == PaymentMethod.Card).Sum(r => r.Total)),
             summaries);
     }
 }
