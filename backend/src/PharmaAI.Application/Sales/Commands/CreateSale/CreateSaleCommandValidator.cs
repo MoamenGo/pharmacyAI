@@ -25,5 +25,13 @@ public sealed class CreateSaleCommandValidator : AbstractValidator<CreateSaleCom
         });
 
         RuleFor(c => c.PaidPiasters).InclusiveBetween(0, MaxPaidPiasters);
+        RuleFor(c => c.DiscountPiasters).InclusiveBetween(0, MaxPaidPiasters);
+        RuleFor(c => c.PaymentMethod).IsInEnum();
+        RuleFor(c => c.CustomerId)
+            .NotEmpty()
+            .When(c => c.PaymentMethod == PaymentMethod.Credit)
+            .WithErrorCode("sale.customer_required")
+            .WithMessage("Choose the customer for a credit sale.");
+        RuleFor(c => c.CardReference).MaximumLength(Sale.CardReferenceMaxLength);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -17,6 +18,10 @@ public interface IPharmaDbContext
     DbSet<Sale> Sales { get; }
 
     DbSet<OutboxMessage> OutboxMessages { get; }
+
+    DbSet<Customer> Customers { get; }
+
+    DbSet<CustomerPayment> CustomerPayments { get; }
 
     /// <summary>Forgets every tracked entity so the next query reads fresh rows (used when retrying a conflict).</summary>
     void ClearChangeTracker();

@@ -40,7 +40,13 @@ public sealed class SaleLine
 
     public decimal UnitPrice { get; private set; }
 
+    /// <summary>Unit price × quantity, before any discount.</summary>
     public decimal LineTotal { get; private set; }
+
+    /// <summary>This line's share of the receipt discount.</summary>
+    public decimal Discount { get; private set; }
+
+    public decimal NetTotal => LineTotal - Discount;
 
     public IReadOnlyCollection<SaleLineBatch> Batches => _batches;
 
@@ -80,4 +86,6 @@ public sealed class SaleLine
 
         return line;
     }
+
+    internal void ApplyDiscount(decimal discount) => Discount = discount;
 }

@@ -17,6 +17,8 @@ internal sealed class SaleLineConfiguration : IEntityTypeConfiguration<SaleLine>
         builder.Property(l => l.Unit).HasConversion<string>().HasMaxLength(10).IsRequired();
         builder.Property(l => l.UnitPrice).HasPrecision(18, 2).IsRequired();
         builder.Property(l => l.LineTotal).HasPrecision(18, 2).IsRequired();
+        builder.Property(l => l.Discount).HasPrecision(18, 2).HasDefaultValue(0m).IsRequired();
+        builder.Ignore(l => l.NetTotal);
 
         builder.HasIndex(l => new { l.SaleId, l.LineNumber }).IsUnique();
         builder.HasOne<Drug>().WithMany().HasForeignKey(l => l.DrugId).OnDelete(DeleteBehavior.Restrict);

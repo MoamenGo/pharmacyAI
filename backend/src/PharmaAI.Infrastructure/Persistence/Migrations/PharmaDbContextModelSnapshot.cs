@@ -17,6 +17,73 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
 
+            modelBuilder.Entity("PharmaAI.Domain.Customers.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("Phone")
+                        .IsUnique()
+                        .HasFilter("\"Phone\" IS NOT NULL");
+
+                    b.ToTable("Customers", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Customers.CustomerPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PaidAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
+
+                    b.HasIndex("CustomerId", "PaidAtUtc");
+
+                    b.ToTable("CustomerPayments", (string)null);
+                });
+
             modelBuilder.Entity("PharmaAI.Domain.Entities.AppSetting", b =>
                 {
                     b.Property<string>("Key")
@@ -132,11 +199,33 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("BusinessDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CardReference")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Discount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
                     b.Property<long>("Number")
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Paid")
                         .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("SoldAtUtc")
@@ -150,6 +239,8 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BusinessDate");
 
+                    b.HasIndex("CustomerId");
+
                     b.HasIndex("Number")
                         .IsUnique();
 
@@ -160,6 +251,12 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Discount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
 
                     b.Property<Guid>("DrugId")
                         .HasColumnType("TEXT");
@@ -309,6 +406,15 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.ToTable("OutboxMessages", (string)null);
                 });
 
+            modelBuilder.Entity("PharmaAI.Domain.Customers.CustomerPayment", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PharmaAI.Domain.Inventory.StockBatch", b =>
                 {
                     b.HasOne("PharmaAI.Domain.Inventory.Drug", null)
@@ -316,6 +422,14 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .HasForeignKey("DrugId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Sales.Sale", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("PharmaAI.Domain.Sales.SaleLine", b =>

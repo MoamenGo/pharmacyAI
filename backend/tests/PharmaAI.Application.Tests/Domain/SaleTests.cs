@@ -24,7 +24,7 @@ public class SaleTests
     {
         var drug = StockedPanadol();
 
-        var sale = Sale.Create(1, SoldAt, Today, [new(drug, SaleUnit.Pack, 1), new(drug, SaleUnit.SubUnit, 2)], paid: 100m);
+        var sale = Sale.Create(1, SoldAt, Today, [new(drug, SaleUnit.Pack, 1), new(drug, SaleUnit.SubUnit, 2)], SalePayment.Cash(100m));
 
         var (pack, strips) = (sale.Lines.First(), sale.Lines.Last());
         Assert.Equal((45.00m, 45.00m, 3, "علبة"), (pack.UnitPrice, pack.LineTotal, pack.QuantityInSubUnits, pack.UnitName));
@@ -38,7 +38,7 @@ public class SaleTests
     {
         var drug = StockedPanadol();
 
-        var sale = Sale.Create(1, SoldAt, Today, [new(drug, SaleUnit.SubUnit, 2), new(drug, SaleUnit.Pack, 1)], paid: 75m);
+        var sale = Sale.Create(1, SoldAt, Today, [new(drug, SaleUnit.SubUnit, 2), new(drug, SaleUnit.Pack, 1)], SalePayment.Cash(75m));
 
         Assert.Equal([("EARLY", 2)], sale.Lines.First().Batches.Select(b => (b.BatchNumber, b.QuantityInSubUnits)));
         Assert.Equal([("EARLY", 1), ("LATE", 2)], sale.Lines.Last().Batches.Select(b => (b.BatchNumber, b.QuantityInSubUnits)));
@@ -53,7 +53,7 @@ public class SaleTests
         scarce.ReceiveStock("B1", Today.AddMonths(6), 1, InventoryTestData.ReceivedAt);
 
         var ex = Assert.Throws<InsufficientStockException>(() =>
-            Sale.Create(1, SoldAt, Today, [new(plenty, SaleUnit.Pack, 1), new(scarce, SaleUnit.SubUnit, 2)], paid: 100m));
+            Sale.Create(1, SoldAt, Today, [new(plenty, SaleUnit.Pack, 1), new(scarce, SaleUnit.SubUnit, 2)], SalePayment.Cash(100m)));
 
         Assert.Equal((scarce.Id, 2, 1), (ex.DrugId, ex.RequestedInSubUnits, ex.AvailableInSubUnits));
     }
@@ -62,12 +62,12 @@ public class SaleTests
     public void Paying_less_than_the_total_is_rejected()
     {
         var ex = Assert.Throws<DomainException>(() =>
-            Sale.Create(1, SoldAt, Today, [new(StockedPanadol(), SaleUnit.Pack, 1)], paid: 44.99m));
+            Sale.Create(1, SoldAt, Today, [new(StockedPanadol(), SaleUnit.Pack, 1)], SalePayment.Cash(44.99m)));
 
         Assert.Equal("sale.insufficient_payment", ex.Code);
     }
 
     [Fact]
     public void An_empty_sale_is_rejected() =>
-        Assert.Equal("sale.invalid_lines", Assert.Throws<DomainException>(() => Sale.Create(1, SoldAt, Today, [], 0m)).Code);
+        Assert.Equal("sale.invalid_lines", Assert.Throws<DomainException>(() => Sale.Create(1, SoldAt, Today, [], SalePayment.Cash(0m))).Code);
 }

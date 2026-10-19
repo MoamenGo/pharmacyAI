@@ -9,8 +9,9 @@ namespace PharmaAI.Application.Sync.Eta;
 public sealed record EtaReceipt(string Json, string Uuid);
 
 /// <summary>
-/// Builds an ETA e-receipt (v1.2, type "s") for a cash sale. Medicines are VAT-exempt, so every
-/// line carries VAT (T1) as exempt (V003) at 0. The JSON is written once and that exact text is
+/// Builds an ETA e-receipt (v1.2, type "s") for a sale. Medicines are VAT-exempt, so every
+/// line carries VAT (T1) as exempt (V003) at 0. A receipt discount is sent as each line's share
+/// in commercialDiscountData, the same split the receipt was saved with. The JSON is written once and that exact text is
 /// both hashed and sent, so the UUID always matches the bytes ETA receives.
 /// See https://sdk.invoicing.eta.gov.eg/documents/receipt-v1-2/.
 /// </summary>
@@ -19,6 +20,11 @@ public static class EtaReceiptBuilder
     public const string ReceiptType = "s";
     public const string TypeVersion = "1.2";
     public const string CashPayment = "C";
+    public const string CardPayment = "V";
+
+    /// <summary>ETA has no code for selling on account; "O" (others) is the closest.</summary>
+    public const string OtherPayment = "O";
+    public const string DiscountDescription = "خصم";
     public const string PackUnitType = "BOX";
     public const string SubUnitType = "EA";
     public const string Vat = "T1";
@@ -106,9 +112,19 @@ public static class EtaReceiptBuilder
                 w.WriteString("unitType", line.Unit == SaleUnit.Pack ? PackUnitType : SubUnitType);
                 w.WriteNumber("quantity", line.Quantity);
                 WriteAmount(w, "unitPrice", line.UnitPrice);
-                WriteAmount(w, "netSale", line.LineTotal);
+                WriteAmount(w, "netSale", line.NetTotal);
                 WriteAmount(w, "totalSale", line.LineTotal);
-                WriteAmount(w, "total", line.LineTotal);
+                WriteAmount(w, "total", line.NetTotal);
+                if (line.Discount > 0)
+                {
+                    w.WriteStartArray("commercialDiscountData");
+                    w.WriteStartObject();
+                    WriteAmount(w, "amount", line.Discount);
+                    w.WriteString("description", DiscountDescription);
+                    w.WriteEndObject();
+                    w.WriteEndArray();
+                }
+
                 w.WriteStartArray("taxableItems");
                 w.WriteStartObject();
                 w.WriteString("taxType", Vat);
@@ -122,7 +138,12 @@ public static class EtaReceiptBuilder
 
             w.WriteEndArray();
 
-            WriteAmount(w, "totalSales", sale.Total);
+            WriteAmount(w, "totalSales", sale.Subtotal);
+            if (sale.Discount > 0)
+            {
+                WriteAmount(w, "totalCommercialDiscount", sale.Discount);
+            }
+
             WriteAmount(w, "netAmount", sale.Total);
             WriteAmount(w, "totalAmount", sale.Total);
             w.WriteStartArray("taxTotals");
@@ -131,7 +152,12 @@ public static class EtaReceiptBuilder
             WriteAmount(w, "amount", 0m);
             w.WriteEndObject();
             w.WriteEndArray();
-            w.WriteString("paymentMethod", CashPayment);
+            w.WriteString("paymentMethod", sale.PaymentMethod switch
+            {
+                PaymentMethod.Card => CardPayment,
+                PaymentMethod.Credit => OtherPayment,
+                _ => CashPayment,
+            });
 
             w.WriteEndObject();
         }
