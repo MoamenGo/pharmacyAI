@@ -6,6 +6,7 @@ using PharmaAI.Application.Abstractions;
 using PharmaAI.Application.Catalog;
 using PharmaAI.Application.Sync;
 using PharmaAI.Application.Sync.Eta;
+using PharmaAI.Infrastructure.Backup;
 using PharmaAI.Infrastructure.Catalog;
 using PharmaAI.Infrastructure.Sync;
 using PharmaAI.Infrastructure.Persistence;
@@ -38,6 +39,12 @@ public static class DependencyInjection
 
         // Parsed on first use (the first catalog search), not at startup.
         services.AddSingleton(_ => EmbeddedDrugCatalog.Load());
+
+        services.AddSingleton(sp => new DatabaseBackups(databasePath, sp.GetRequiredService<TimeProvider>()));
+        if (configuration.GetValue("Backup:Automatic", true))
+        {
+            services.AddHostedService<AutomaticBackupService>();
+        }
 
         services.AddSingleton<SyncSignal>();
         services.AddSingleton<ISyncTrigger>(sp => sp.GetRequiredService<SyncSignal>());

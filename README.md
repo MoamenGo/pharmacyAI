@@ -60,6 +60,7 @@ Override it with `--Database:Path=<file>`.
 | Inventory | F2 | Add a new drug |
 | Inventory | F3 | Focus search (a scanned barcode + Enter opens the drug, or offers to add it) |
 | Inventory | F4 | Receive stock for the selected drug |
+| Inventory | F6 | Edit the selected drug (names, barcode, price, active ingredient, reorder level) |
 | Sale | F2 | New sale (press twice to discard a sale in progress) |
 | Sale | F3 | Focus search (scan a barcode, or type a name and pick with ↑/↓ + Enter) |
 | Sale | F4 | Switch the selected line between packs and strips |
@@ -69,6 +70,7 @@ Override it with `--Database:Path=<file>`.
 | Sale | F8 | Remove the selected line |
 | Sale | F9 | Enter the amount paid (cash: empty means exact change; credit: what is paid now) |
 | Sale | F10 | Save and print the receipt; after a sale, reprint it |
+| Sale | F11 | Show in-stock alternatives (same active ingredient) for the selected line |
 | Sales | F3 | Open a receipt by number |
 | Sales | F9 | Return the quantities entered on the open receipt |
 | Customers | F2 | Add a customer |
@@ -88,6 +90,14 @@ Override it with `--Database:Path=<file>`.
   English trade names, active ingredient, manufacturer and EGP price; CC0, see
   `backend/src/PharmaAI.Infrastructure/Catalog/README.md`). Picking one fills the names, price and a guess at the
   strips per box, all still editable. The list has no barcodes, so the barcode is always scanned.
+- A drug can be edited after it is created, except its pack size (stock is counted in sub-units, so changing it would
+  change every balance). Past receipts keep their own copy of the name and price.
+- Stock that cannot be sold (expired, damaged, lost) is written off per batch with a reason; write-offs are kept and
+  listed in the period report.
+- Alternatives are drugs with exactly the same active ingredient: those on the shelf, and the bundled list's products
+  cheapest first.
+- The Home screen lists shortages (sellable stock at or below the drug's reorder level, in packs; 0 turns it off),
+  batches expiring within 3 months, and expired stock still on the shelf.
 
 ## Sale rules
 
@@ -114,6 +124,16 @@ Override it with `--Database:Path=<file>`.
 - The day's totals show returns and cash refunds, and what should be in the drawer: cash sales and payments collected
   from customers, less cash refunds.
 - Not yet: returns are not sent to ETA as return receipts.
+- The Sales screen's period report shows per-day sales and returns, best sellers by what was kept (after discounts and
+  returns), and write-offs.
+
+## Backups
+
+- The API takes a backup about 30 s after it starts and then once a day, into a `backups` folder next to the database,
+  keeping the newest 30. Each is a consistent `VACUUM INTO` snapshot, safe while the tills sell.
+- The Settings screen takes a backup on demand, downloads one, or restores one. A restore first backs up the current
+  data (so it can be undone) and brings an older backup up to the current schema. Restore while nobody is selling.
+- Set `Backup:Automatic=false` to turn the daily backup off.
 
 ## Sync and the ETA e-receipt
 

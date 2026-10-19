@@ -23,6 +23,9 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
     subUnitName: "شريط",
     subUnitsPerPack: "1",
     price: "",
+    activeIngredient: "",
+    manufacturer: "",
+    reorderLevel: "0",
   });
   const [picked, setPicked] = useState<CatalogDrug | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,8 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
       packUnitName: drug.packUnitName,
       subUnitName: drug.subUnitName,
       subUnitsPerPack: String(drug.subUnitsPerPack),
+      activeIngredient: drug.scientificName,
+      manufacturer: drug.manufacturer,
     }));
   };
 
@@ -66,6 +71,9 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
         subUnitName: form.subUnitName.trim(),
         subUnitsPerPack: Number(form.subUnitsPerPack) || 1,
         publicPricePiasters: price,
+        activeIngredient: form.activeIngredient.trim() || null,
+        manufacturer: form.manufacturer.trim() || null,
+        reorderLevelInPacks: Math.max(0, Math.trunc(Number(form.reorderLevel) || 0)),
       });
       onCreated(created);
     } catch (e) {
@@ -85,7 +93,7 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
         <CatalogSearch onPick={fillFromCatalog} />
         {picked && (
           <p className="rounded-lg bg-slate-950 px-3 py-2 text-sm text-slate-300" data-testid="catalog-picked">
-            من الدليل: <span dir="ltr">{picked.scientificName}</span> · {picked.manufacturer}. راجع السعر وعدد الشرايط على العلبة.
+            اتملى من الدليل. راجع السعر وعدد الشرايط على العلبة.
           </p>
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -96,6 +104,16 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
           <Field id="packUnitName" label="اسم العبوة" value={form.packUnitName} onChange={set("packUnitName")} required />
           <Field id="subUnitName" label="اسم الوحدة الصغرى" value={form.subUnitName} onChange={set("subUnitName")} required />
           <Field id="subUnitsPerPack" label="عدد الوحدات في العبوة" type="number" min={1} value={form.subUnitsPerPack} onChange={set("subUnitsPerPack")} required />
+          <Field
+            id="reorderLevel"
+            label="حد الطلب (علب، صفر = من غير تنبيه)"
+            type="number"
+            min={0}
+            value={form.reorderLevel}
+            onChange={set("reorderLevel")}
+          />
+          <Field id="activeIngredient" label="المادة الفعالة" value={form.activeIngredient} onChange={set("activeIngredient")} dir="ltr" />
+          <Field id="manufacturer" label="الشركة" value={form.manufacturer} onChange={set("manufacturer")} dir="ltr" />
         </div>
         {error && <p role="alert" className="text-sm text-rose-400">{error}</p>}
         <div className="flex gap-3">

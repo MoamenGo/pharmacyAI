@@ -28,6 +28,8 @@ public sealed class PharmaDbContext(DbContextOptions<PharmaDbContext> options) :
 
     public DbSet<SaleReturn> SaleReturns => Set<SaleReturn>();
 
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+
     public void ClearChangeTracker() => ChangeTracker.Clear();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

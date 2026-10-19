@@ -5,7 +5,7 @@ using PharmaAI.Application.Common;
 
 namespace PharmaAI.Application.Inventory.Queries.ListDrugs;
 
-/// <summary>Searches by exact barcode (scanner input) or by part of the Arabic or English name.</summary>
+/// <summary>Searches by exact barcode (scanner input) or by part of the Arabic or English name or the active ingredient.</summary>
 public sealed record ListDrugsQuery(string? Search, int Limit = ListDrugsQuery.DefaultLimit) : IRequest<IReadOnlyList<DrugSummaryDto>>
 {
     public const int DefaultLimit = 50;
@@ -26,7 +26,8 @@ public sealed class ListDrugsQueryHandler(IPharmaDbContext db, PharmacyCalendar 
             query = query.Where(d =>
                 d.Barcode == search
                 || EF.Functions.Like(d.NameAr, pattern, "\\")
-                || (d.NameEn != null && EF.Functions.Like(d.NameEn, pattern, "\\")));
+                || (d.NameEn != null && EF.Functions.Like(d.NameEn, pattern, "\\"))
+                || (d.ActiveIngredient != null && EF.Functions.Like(d.ActiveIngredient, pattern, "\\")));
         }
 
         var drugs = await query
@@ -38,6 +39,6 @@ public sealed class ListDrugsQueryHandler(IPharmaDbContext db, PharmacyCalendar 
         return drugs.Select(d => d.ToSummary(today)).ToList();
     }
 
-    private static string EscapeLike(string value) =>
+    internal static string EscapeLike(string value) =>
         value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 }

@@ -14,6 +14,17 @@ public sealed record CatalogDrugDto(
     string SubUnitName,
     int SubUnitsPerPack);
 
+public static class CatalogMapping
+{
+    public static CatalogDrugDto ToDto(this CatalogDrug d)
+    {
+        var units = CatalogUnits.Suggest(d.NameEn);
+        return new CatalogDrugDto(
+            d.NameEn, d.NameAr, d.ScientificName, d.Manufacturer, d.Route, Piasters.FromPounds(d.Price),
+            units.PackUnitName, units.SubUnitName, units.SubUnitsPerPack);
+    }
+}
+
 public sealed record SearchCatalogQuery(string? Search, int Limit = SearchCatalogQuery.DefaultLimit) : IRequest<IReadOnlyList<CatalogDrugDto>>
 {
     public const int DefaultLimit = 20;
@@ -26,13 +37,7 @@ public sealed class SearchCatalogQueryHandler(DrugCatalog catalog) : IRequestHan
     {
         IReadOnlyList<CatalogDrugDto> results = catalog
             .Search(request.Search, Math.Clamp(request.Limit, 1, SearchCatalogQuery.MaxLimit))
-            .Select(d =>
-            {
-                var units = CatalogUnits.Suggest(d.NameEn);
-                return new CatalogDrugDto(
-                    d.NameEn, d.NameAr, d.ScientificName, d.Manufacturer, d.Route, Piasters.FromPounds(d.Price),
-                    units.PackUnitName, units.SubUnitName, units.SubUnitsPerPack);
-            })
+            .Select(d => d.ToDto())
             .ToList();
         return Task.FromResult(results);
     }

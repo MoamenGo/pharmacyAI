@@ -29,6 +29,8 @@ public sealed class BeforeSaveDbContext(IPharmaDbContext inner, Func<Task> befor
 
     public DbSet<SaleReturn> SaleReturns => inner.SaleReturns;
 
+    public DbSet<StockAdjustment> StockAdjustments => inner.StockAdjustments;
+
     public void ClearChangeTracker() => inner.ClearChangeTracker();
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

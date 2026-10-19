@@ -18,7 +18,10 @@ public sealed class CreateDrugCommandHandler(IPharmaDbContext db, TimeProvider c
             request.SubUnitName,
             request.SubUnitsPerPack,
             Piasters.ToPounds(request.PublicPricePiasters),
-            clock.GetUtcNow().UtcDateTime);
+            clock.GetUtcNow().UtcDateTime,
+            request.ActiveIngredient,
+            request.Manufacturer,
+            request.ReorderLevelInPacks);
 
         db.Drugs.Add(drug);
         await db.SaveChangesAsync(cancellationToken);

@@ -9,4 +9,7 @@ public sealed record CreateDrugCommand(
     string PackUnitName,
     string SubUnitName,
     int SubUnitsPerPack,
-    long PublicPricePiasters) : IRequest<DrugDetailsDto>;
+    long PublicPricePiasters,
+    string? ActiveIngredient = null,
+    string? Manufacturer = null,
+    int ReorderLevelInPacks = 0) : IRequest<DrugDetailsDto>;

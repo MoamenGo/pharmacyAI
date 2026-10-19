@@ -63,6 +63,7 @@ export const CartTable = forwardRef<HTMLInputElement, Props>(function CartTable(
                   {drug.sellableQuantityInSubUnits > 0
                     ? formatQuantity(drug.sellableQuantityInSubUnits, drug.subUnitsPerPack, drug.packUnitName, drug.subUnitName)
                     : "لا يوجد"}
+                  {short && " · F11 للبدائل"}
                 </div>
               </td>
               <td className="px-3 py-2">
