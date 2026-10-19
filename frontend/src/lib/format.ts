@@ -80,3 +80,15 @@ export function formatCairoDateTime(isoUtc: string): string {
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}`;
 }
+
+/** Piasters as a plain amount for an input box: 4550 → "45.50", 4500 → "45". */
+export function formatPounds(piasters: number): string {
+  const pounds = Math.trunc(piasters / 100);
+  const rest = piasters % 100;
+  return rest === 0 ? String(pounds) : `${pounds}.${String(rest).padStart(2, "0")}`;
+}
+
+/** Today's date in Cairo as "2026-10-18", for date inputs and API queries. */
+export function cairoToday(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}

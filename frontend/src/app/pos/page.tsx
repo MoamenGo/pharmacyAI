@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ShortcutBar } from "@/components/ShortcutBar";
+import { AlternativesDialog } from "@/components/pos/AlternativesDialog";
 import { CartTable } from "@/components/pos/CartTable";
 import { PAYMENT_METHODS, PaymentPanel } from "@/components/pos/PaymentPanel";
 import { ProductSearch } from "@/components/pos/ProductSearch";
@@ -24,6 +25,7 @@ export default function PosPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAlternatives, setShowAlternatives] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [today, setToday] = useState<DailySales | null>(null);
   const [pharmacyName, setPharmacyName] = useState<string | null>(null);
@@ -154,6 +156,17 @@ export default function PosPage() {
   };
 
   const selected = cart.selectedKey;
+  const selectedDrug = cart.lines.find((l) => l.key === selected)?.drug ?? null;
+
+  const addAlternative = async (drugId: string) => {
+    setShowAlternatives(false);
+    try {
+      cart.add((await api.getDrug(drugId)).drug);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+    focusSearch();
+  };
 
   useFunctionKeys({
     F2: newSale,
@@ -165,10 +178,22 @@ export default function PosPage() {
     F8: () => selected && cart.remove(selected),
     F9: () => (method === "credit" && !customer ? customerRef.current : paidRef.current)?.focus(),
     F10: () => (lastSale && cart.lines.length === 0 ? print() : void submit()),
+    F11: () => selectedDrug && setShowAlternatives(true),
   });
 
   return (
     <main className="grid gap-6 p-6 pb-20 lg:grid-cols-[1fr_360px]">
+      {showAlternatives && selectedDrug && (
+        <AlternativesDialog
+          drug={selectedDrug}
+          onPick={(id) => void addAlternative(id)}
+          onClose={() => {
+            setShowAlternatives(false);
+            focusSearch();
+          }}
+        />
+      )}
+
       <section className="space-y-4">
         <div className="flex items-center justify-between text-sm text-slate-400">
           <h1 className="text-xl font-bold text-slate-100">فاتورة بيع</h1>
@@ -272,6 +297,7 @@ export default function PosPage() {
           { key: "F8", label: "حذف الصنف" },
           { key: "F9", label: "المدفوع" },
           { key: "F10", label: "حفظ وطباعة" },
+          { key: "F11", label: "البدائل" },
         ]}
       />
     </main>

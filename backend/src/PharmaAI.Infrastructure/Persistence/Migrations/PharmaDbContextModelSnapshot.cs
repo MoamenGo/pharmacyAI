@@ -108,12 +108,20 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ActiveIngredient")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Barcode")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Manufacturer")
+                        .HasMaxLength(150)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("NameAr")
@@ -134,6 +142,9 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ReorderLevelInPacks")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SubUnitName")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -150,6 +161,54 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.HasIndex("NameAr");
 
                     b.ToTable("Drugs", (string)null);
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Inventory.StockAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DrugId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("QuantityInSubUnits")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StockBatchId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("DrugId");
+
+                    b.HasIndex("StockBatchId");
+
+                    b.ToTable("StockAdjustments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockAdjustments_Quantity_Positive", "\"QuantityInSubUnits\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("PharmaAI.Domain.Inventory.StockBatch", b =>
@@ -527,6 +586,21 @@ namespace PharmaAI.Infrastructure.Persistence.Migrations
                     b.HasOne("PharmaAI.Domain.Customers.Customer", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PharmaAI.Domain.Inventory.StockAdjustment", b =>
+                {
+                    b.HasOne("PharmaAI.Domain.Inventory.Drug", null)
+                        .WithMany()
+                        .HasForeignKey("DrugId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PharmaAI.Domain.Inventory.StockBatch", null)
+                        .WithMany()
+                        .HasForeignKey("StockBatchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

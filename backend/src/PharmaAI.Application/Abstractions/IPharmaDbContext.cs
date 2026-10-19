@@ -25,6 +25,8 @@ public interface IPharmaDbContext
 
     DbSet<SaleReturn> SaleReturns { get; }
 
+    DbSet<StockAdjustment> StockAdjustments { get; }
+
     /// <summary>Forgets every tracked entity so the next query reads fresh rows (used when retrying a conflict).</summary>
     void ClearChangeTracker();
 

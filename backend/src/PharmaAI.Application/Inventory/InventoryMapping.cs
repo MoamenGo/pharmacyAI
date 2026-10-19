@@ -9,6 +9,7 @@ internal static class InventoryMapping
     {
         var withStock = drug.Batches.Where(b => b.QuantityInSubUnits > 0).ToList();
         var sellable = withStock.Where(b => !b.IsExpiredOn(today)).ToList();
+        var sellableQuantity = sellable.Sum(b => b.QuantityInSubUnits);
 
         return new DrugSummaryDto(
             drug.Id,
@@ -20,10 +21,18 @@ internal static class InventoryMapping
             drug.SubUnitsPerPack,
             Piasters.FromPounds(drug.PublicPrice),
             Piasters.FromPounds(drug.SubUnitPrice),
-            sellable.Sum(b => b.QuantityInSubUnits),
+            sellableQuantity,
             withStock.Where(b => b.IsExpiredOn(today)).Sum(b => b.QuantityInSubUnits),
-            sellable.Count == 0 ? null : sellable.Min(b => b.ExpiryDate));
+            sellable.Count == 0 ? null : sellable.Min(b => b.ExpiryDate),
+            drug.ActiveIngredient,
+            drug.Manufacturer,
+            drug.ReorderLevelInPacks,
+            IsShort(drug, sellableQuantity));
     }
+
+    /// <summary>A drug with a reorder level is short once its sellable stock drops below that many full packs.</summary>
+    public static bool IsShort(Drug drug, int sellableQuantityInSubUnits) =>
+        drug.ReorderLevelInPacks > 0 && sellableQuantityInSubUnits < (long)drug.ReorderLevelInPacks * drug.SubUnitsPerPack;
 
     public static DrugDetailsDto ToDetails(this Drug drug, DateOnly today) =>
         new(

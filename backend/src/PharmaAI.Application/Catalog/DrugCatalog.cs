@@ -51,6 +51,21 @@ public sealed class DrugCatalog
             .ToList();
     }
 
+    /// <summary>Products with exactly this active ingredient (the same combination for mixtures), cheapest first.</summary>
+    public IReadOnlyList<CatalogDrug> WithIngredient(string ingredient, int limit)
+    {
+        var key = Normalize(ingredient);
+        return key.Length == 0
+            ? []
+            : _entries
+                .Where(e => e.Scientific == key)
+                .OrderBy(e => e.Drug.Price)
+                .ThenBy(e => e.Drug.NameEn, StringComparer.Ordinal)
+                .Take(limit)
+                .Select(e => e.Drug)
+                .ToList();
+    }
+
     private static int Rank(Entry e, string term) =>
         e.En.StartsWith(term, StringComparison.Ordinal) || e.Ar.StartsWith(term, StringComparison.Ordinal) ? 0
         : e.En.Contains(term, StringComparison.Ordinal) || e.Ar.Contains(term, StringComparison.Ordinal) ? 1

@@ -25,6 +25,11 @@ export interface DrugSummary {
   sellableQuantityInSubUnits: number;
   expiredQuantityInSubUnits: number;
   nearestExpiry: string | null;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+  /** Sellable stock is below the reorder level. */
+  isShort: boolean;
 }
 
 export interface StockBatch {
@@ -49,6 +54,77 @@ export interface NewDrug {
   subUnitName: string;
   subUnitsPerPack: number;
   publicPricePiasters: number;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+}
+
+/** What can change after a drug is created; the pack size cannot. */
+export interface DrugUpdate {
+  nameAr: string;
+  nameEn: string | null;
+  barcode: string;
+  publicPricePiasters: number;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+}
+
+export type WriteOffReason = "expired" | "damaged" | "lost" | "other";
+
+export interface WriteOff {
+  quantityInSubUnits: number;
+  reason: WriteOffReason;
+  note: string | null;
+}
+
+export interface Alternatives {
+  activeIngredient: string | null;
+  inStock: DrugSummary[];
+  inMarket: CatalogDrug[];
+}
+
+export interface BatchAlert {
+  drugId: string;
+  drugNameAr: string;
+  packUnitName: string;
+  subUnitName: string;
+  subUnitsPerPack: number;
+  batchId: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantityInSubUnits: number;
+}
+
+export interface InventoryAlerts {
+  today: string;
+  shortages: DrugSummary[];
+  expiringSoon: BatchAlert[];
+  expired: BatchAlert[];
+}
+
+export interface SalesReport {
+  from: string;
+  to: string;
+  count: number;
+  totalPiasters: number;
+  returnsPiasters: number;
+  days: { date: string; count: number; totalPiasters: number; returnsPiasters: number }[];
+  topDrugs: { drugId: string; drugNameAr: string; quantityInSubUnits: number; totalPiasters: number }[];
+  writeOffs: {
+    id: string;
+    drugId: string;
+    drugNameAr: string;
+    batchNumber: string;
+    expiryDate: string;
+    quantityInSubUnits: number;
+    packUnitName: string;
+    subUnitName: string;
+    subUnitsPerPack: number;
+    reason: WriteOffReason;
+    note: string | null;
+    createdAtUtc: string;
+  }[];
 }
 
 /** A product from the bundled list of medicines registered in Egypt, with a guess at how it is packed. */
@@ -165,6 +241,12 @@ export interface SaleReturn {
   creditedPiasters: number;
   reason: string | null;
   lines: { saleLineId: string; drugNameAr: string; unit: SaleUnit; unitName: string; quantity: number; amountPiasters: number }[];
+}
+
+export interface Backup {
+  name: string;
+  sizeBytes: number;
+  createdAtUtc: string;
 }
 
 export interface Customer {
@@ -306,6 +388,18 @@ export const api = {
 
   createDrug: (drug: NewDrug) => request<DrugDetails>("/api/drugs", { method: "POST", body: JSON.stringify(drug) }),
 
+  updateDrug: (drugId: string, drug: DrugUpdate) =>
+    request<DrugDetails>(`/api/drugs/${drugId}`, { method: "PUT", body: JSON.stringify(drug) }),
+
+  writeOff: (drugId: string, batchId: string, writeOff: WriteOff) =>
+    request<DrugDetails>(`/api/drugs/${drugId}/batches/${batchId}/write-offs`, { method: "POST", body: JSON.stringify(writeOff) }),
+
+  getAlternatives: (drugId: string) => request<Alternatives>(`/api/drugs/${drugId}/alternatives`),
+
+  getInventoryAlerts: () => request<InventoryAlerts>("/api/inventory/alerts"),
+
+  getSalesReport: (from: string, to: string) => request<SalesReport>(`/api/reports/sales?from=${from}&to=${to}`),
+
   receiveStock: (drugId: string, receipt: StockReceipt) =>
     request<DrugDetails>(`/api/drugs/${drugId}/batches`, { method: "POST", body: JSON.stringify(receipt) }),
 
@@ -339,6 +433,15 @@ export const api = {
 
   recordCustomerPayment: (id: string, amountPiasters: number, note: string | null) =>
     request<Customer>(`/api/customers/${id}/payments`, { method: "POST", body: JSON.stringify({ amountPiasters, note }) }),
+
+  listBackups: () => request<Backup[]>("/api/backups"),
+
+  createBackup: () => request<Backup>("/api/backups", { method: "POST" }),
+
+  backupUrl: (name: string) => `${API_URL}/api/backups/${encodeURIComponent(name)}`,
+
+  restoreBackup: (name: string) =>
+    request<{ restored: string; safetyBackup: string }>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: "POST" }),
 
   getSyncStatus: () => request<SyncStatus>("/api/sync/status"),
 

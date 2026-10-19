@@ -21,6 +21,9 @@ internal sealed class DrugConfiguration : IEntityTypeConfiguration<Drug>
         // SQLite has no decimal type; EF stores decimal as exact TEXT, never as a binary float.
         builder.Property(d => d.PublicPrice).HasPrecision(18, 2).IsRequired();
         builder.Ignore(d => d.SubUnitPrice);
+        builder.Property(d => d.ActiveIngredient).HasMaxLength(Drug.ActiveIngredientMaxLength);
+        builder.Property(d => d.Manufacturer).HasMaxLength(Drug.ManufacturerMaxLength);
+        builder.Property(d => d.ReorderLevelInPacks).IsRequired();
 
         builder.HasIndex(d => d.Barcode).IsUnique();
         builder.HasIndex(d => d.NameAr);

@@ -40,8 +40,9 @@ export function DrugTable({ drugs, selectedId, onSelect }: Props) {
                 </div>
               </td>
               <td className="px-4 py-3 whitespace-nowrap">{formatPiasters(drug.publicPricePiasters)}</td>
-              <td className={`px-4 py-3 ${drug.sellableQuantityInSubUnits === 0 ? "text-rose-400" : ""}`}>
+              <td className={`px-4 py-3 ${drug.sellableQuantityInSubUnits === 0 ? "text-rose-400" : drug.isShort ? "text-amber-300" : ""}`}>
                 {formatQuantity(drug.sellableQuantityInSubUnits, drug.subUnitsPerPack, drug.packUnitName, drug.subUnitName)}
+                {drug.isShort && <div className="text-xs">محتاج طلب</div>}
               </td>
               <td className="px-4 py-3">{drug.nearestExpiry ? <ExpiryBadge date={drug.nearestExpiry} /> : <span className="text-slate-600">—</span>}</td>
             </tr>

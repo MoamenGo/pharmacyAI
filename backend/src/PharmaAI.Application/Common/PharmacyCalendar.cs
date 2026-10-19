@@ -10,6 +10,10 @@ public sealed class PharmacyCalendar(TimeProvider clock)
 
     public DateOnly Today => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), Cairo).DateTime);
 
+    /// <summary>The Cairo date of a UTC moment.</summary>
+    public static DateOnly ToLocalDate(DateTime utc) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Cairo));
+
     private static TimeZoneInfo ResolveCairo()
     {
         foreach (var id in new[] { "Africa/Cairo", "Egypt Standard Time" })
