@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DrugPanel } from "@/components/inventory/DrugPanel";
 import { DrugTable } from "@/components/inventory/DrugTable";
+import { EditDrugDialog } from "@/components/inventory/EditDrugDialog";
 import { NewDrugDialog } from "@/components/inventory/NewDrugDialog";
 import { ShortcutBar } from "@/components/ShortcutBar";
 import { useFunctionKeys } from "@/hooks/useFunctionKeys";
@@ -19,6 +20,7 @@ export default function InventoryPage() {
   const [drugs, setDrugs] = useState<DrugSummary[]>([]);
   const [selected, setSelected] = useState<DrugDetails | null>(null);
   const [newDrugBarcode, setNewDrugBarcode] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const receiveRef = useRef<HTMLInputElement>(null);
@@ -43,9 +45,7 @@ export default function InventoryPage() {
     return () => clearTimeout(timer);
   }, [search, refreshList]);
 
-  useEffect(() => searchRef.current?.focus(), []);
-
-  const select = async (id: string) => {
+  const select = useCallback(async (id: string) => {
     const seq = ++selectSeq.current;
     try {
       const details = await api.getDrug(id);
@@ -53,7 +53,14 @@ export default function InventoryPage() {
     } catch (e) {
       if (seq === selectSeq.current) setError(errorMessage(e));
     }
-  };
+  }, []);
+
+  // The home screen's alerts link here as /inventory/?drug=<id> to open that drug straight away.
+  useEffect(() => {
+    searchRef.current?.focus();
+    const drugId = new URLSearchParams(window.location.search).get("drug");
+    if (drugId) void select(drugId);
+  }, [select]);
 
   const applyChange = (details: DrugDetails) => {
     setSelected(details);
@@ -88,6 +95,7 @@ export default function InventoryPage() {
     F2: () => setNewDrugBarcode(""),
     F3: () => searchRef.current?.select(),
     F4: () => receiveRef.current?.focus(),
+    F6: () => selected && setEditing(true),
   });
 
   return (
@@ -98,7 +106,7 @@ export default function InventoryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void onSearchEnter()}
-          placeholder="ابحث بالاسم أو امسح الباركود…"
+          placeholder="ابحث بالاسم أو المادة الفعالة أو امسح الباركود…"
           className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-lg"
           aria-label="بحث"
           autoComplete="off"
@@ -108,9 +116,26 @@ export default function InventoryPage() {
       </section>
 
       {selected ? (
-        <DrugPanel ref={receiveRef} details={selected} onChanged={applyChange} />
+        <DrugPanel
+          ref={receiveRef}
+          details={selected}
+          onChanged={applyChange}
+          onEdit={() => setEditing(true)}
+          onOpenDrug={(id) => void select(id)}
+        />
       ) : (
         <aside className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500">اختار صنف لعرض التشغيلات واستلام كمية</aside>
+      )}
+
+      {editing && selected && (
+        <EditDrugDialog
+          drug={selected.drug}
+          onClose={() => setEditing(false)}
+          onSaved={(details) => {
+            setEditing(false);
+            applyChange(details);
+          }}
+        />
       )}
 
       {newDrugBarcode !== null && (
@@ -132,6 +157,7 @@ export default function InventoryPage() {
           { key: "F2", label: "صنف جديد" },
           { key: "F3", label: "بحث" },
           { key: "F4", label: "استلام كمية" },
+          { key: "F6", label: "تعديل الصنف" },
         ]}
       />
     </main>

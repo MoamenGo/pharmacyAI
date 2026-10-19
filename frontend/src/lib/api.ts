@@ -25,6 +25,11 @@ export interface DrugSummary {
   sellableQuantityInSubUnits: number;
   expiredQuantityInSubUnits: number;
   nearestExpiry: string | null;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+  /** Sellable stock is below the reorder level. */
+  isShort: boolean;
 }
 
 export interface StockBatch {
@@ -49,6 +54,88 @@ export interface NewDrug {
   subUnitName: string;
   subUnitsPerPack: number;
   publicPricePiasters: number;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+}
+
+/** What can change after a drug is created; the pack size cannot. */
+export interface DrugUpdate {
+  nameAr: string;
+  nameEn: string | null;
+  barcode: string;
+  publicPricePiasters: number;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  reorderLevelInPacks: number;
+}
+
+export type WriteOffReason = "expired" | "damaged" | "lost" | "other";
+
+export interface WriteOff {
+  quantityInSubUnits: number;
+  reason: WriteOffReason;
+  note: string | null;
+}
+
+/** A product from the bundled Egyptian drug list; the price is the published one. */
+export interface CatalogDrug {
+  id: number;
+  nameEn: string;
+  nameAr: string;
+  activeIngredient: string | null;
+  manufacturer: string | null;
+  drugClass: string | null;
+  route: string | null;
+  pricePiasters: number | null;
+}
+
+export interface Alternatives {
+  activeIngredient: string | null;
+  inStock: DrugSummary[];
+  inMarket: CatalogDrug[];
+}
+
+export interface BatchAlert {
+  drugId: string;
+  drugNameAr: string;
+  packUnitName: string;
+  subUnitName: string;
+  subUnitsPerPack: number;
+  batchId: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantityInSubUnits: number;
+}
+
+export interface InventoryAlerts {
+  today: string;
+  shortages: DrugSummary[];
+  expiringSoon: BatchAlert[];
+  expired: BatchAlert[];
+}
+
+export interface SalesReport {
+  from: string;
+  to: string;
+  count: number;
+  totalPiasters: number;
+  days: { date: string; count: number; totalPiasters: number }[];
+  topDrugs: { drugId: string; drugNameAr: string; quantityInSubUnits: number; totalPiasters: number }[];
+  writeOffs: {
+    id: string;
+    drugId: string;
+    drugNameAr: string;
+    batchNumber: string;
+    expiryDate: string;
+    quantityInSubUnits: number;
+    packUnitName: string;
+    subUnitName: string;
+    subUnitsPerPack: number;
+    reason: WriteOffReason;
+    note: string | null;
+    createdAtUtc: string;
+  }[];
 }
 
 export interface StockReceipt {
@@ -215,9 +302,26 @@ export const api = {
   receiveStock: (drugId: string, receipt: StockReceipt) =>
     request<DrugDetails>(`/api/drugs/${drugId}/batches`, { method: "POST", body: JSON.stringify(receipt) }),
 
+  updateDrug: (drugId: string, drug: DrugUpdate) =>
+    request<DrugDetails>(`/api/drugs/${drugId}`, { method: "PUT", body: JSON.stringify(drug) }),
+
+  writeOff: (drugId: string, batchId: string, writeOff: WriteOff) =>
+    request<DrugDetails>(`/api/drugs/${drugId}/batches/${batchId}/write-offs`, { method: "POST", body: JSON.stringify(writeOff) }),
+
+  getAlternatives: (drugId: string) => request<Alternatives>(`/api/drugs/${drugId}/alternatives`),
+
+  getInventoryAlerts: () => request<InventoryAlerts>("/api/inventory/alerts"),
+
+  searchCatalog: (search: string, limit = 12) =>
+    request<CatalogDrug[]>(`/api/catalog?search=${encodeURIComponent(search)}&limit=${limit}`),
+
   createSale: (sale: NewSale) => request<Sale>("/api/sales", { method: "POST", body: JSON.stringify(sale) }),
 
   listSales: (date?: string) => request<DailySales>(`/api/sales${date ? `?date=${date}` : ""}`),
+
+  getSale: (id: string) => request<Sale>(`/api/sales/${id}`),
+
+  getSalesReport: (from: string, to: string) => request<SalesReport>(`/api/reports/sales?from=${from}&to=${to}`),
 
   getSyncStatus: () => request<SyncStatus>("/api/sync/status"),
 

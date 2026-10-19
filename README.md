@@ -60,14 +60,38 @@ Override it with `--Database:Path=<file>`.
 | Inventory | F2 | Add a new drug |
 | Inventory | F3 | Focus search (a scanned barcode + Enter opens the drug, or offers to add it) |
 | Inventory | F4 | Receive stock for the selected drug |
+| Inventory | F6 | Edit the selected drug (names, barcode, price, active ingredient, reorder level) |
 | Sale | F2 | New sale (press twice to discard a sale in progress) |
 | Sale | F3 | Focus search (scan a barcode, or type a name and pick with ↑/↓ + Enter) |
 | Sale | F4 | Switch the selected line between packs and strips |
 | Sale | F6 | Edit the selected line's quantity (Enter returns to search) |
+| Sale | F7 | Alternatives for the selected line: same active ingredient, in stock |
 | Sale | F8 | Remove the selected line |
 | Sale | F9 | Enter the amount paid (empty means exact change) |
 | Sale | F10 | Save and print the receipt; after a sale, reprint it |
-| Sync | F5 | Send queued receipts to the tax authority now |
+| Sales | F10 | Print the selected receipt again |
+| Sync | F5 | Send queued receipts to the tax authority now (when the link is on) |
+
+## Egyptian drug list
+
+- The API ships the Egyptian drug list from [karem505/egyptian-drug-database](https://github.com/karem505/egyptian-drug-database)
+  (June 2026, 25,070 products, CC0 public domain): English and Arabic trade names, active ingredient, manufacturer,
+  class, route and the published price. It lives gzipped in `backend/src/PharmaAI.Infrastructure/Catalog/`.
+- On startup the API loads it into `CatalogDrugs` when the bundled version is newer than the database's
+  (`CatalogImporter.Version`). The pharmacy's own drugs and stock are never touched. Set `Catalog:Import=false` to skip it.
+- "New drug" (F2 in Inventory) searches the list and fills in the names, active ingredient, manufacturer, price and units.
+  The list has no barcodes and does not say how many strips a box holds, so those are typed (or scanned) once.
+- The list's Arabic name is a transliteration of the brand, so the strength from the English name is added to it.
+  Prices change often: the list's price is a starting point, not the shelf price.
+- Alternatives are drugs whose active ingredient text matches exactly (ignoring case).
+
+## Stock upkeep and reports
+
+- A drug's reorder level (in packs) puts it on the Home screen's shortage list when sellable stock drops below it; 0 means no alert.
+- Home also lists stock expiring within 90 days and expired stock still on the shelf, each linking to the drug.
+- Expired, damaged or lost stock is written off per batch (إعدام). The batch shrinks and a `StockAdjustments` row keeps the reason.
+- The Sales screen lists any day's receipts (open one to reprint it) and reports a date range: per-day totals,
+  best sellers and write-offs.
 
 ## Inventory rules
 
@@ -88,8 +112,9 @@ Override it with `--Database:Path=<file>`.
 
 ## Sync and the ETA e-receipt
 
-- Every sale writes an outbox row in the same transaction, so a saved sale is never lost from the tax queue,
-  even when the machine is offline. Sales that existed before the outbox was added are queued by the migration.
+- The link with the tax authority is optional and off by default; the till, stock and reports work without it.
+- While it is on, every sale writes an outbox row in the same transaction, so a saved sale is never lost from the tax queue,
+  even when the machine is offline. Sales made while it is off are not queued (ETA would refuse them after 24 hours anyway).
 - A background worker wakes after each sale (and every 30 s) and sends due receipts to the Egyptian Tax Authority
   e-receipt API v1.2. Failures retry with backoff (30 s doubling, capped at 1 h); the Sync screen lists them.
 - Receipts are built in sale-number order and chained with `previousUUID`. A built receipt is frozen, so a resend

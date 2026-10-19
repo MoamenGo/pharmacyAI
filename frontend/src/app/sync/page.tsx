@@ -59,24 +59,30 @@ export default function SyncPage() {
     }
   };
 
-  useFunctionKeys({ F5: () => void syncNow() });
+  useFunctionKeys({ F5: () => void (inUse ? syncNow() : refresh()) });
 
   const pendingHours = status?.oldestPendingAtUtc
     ? (Date.now() - Date.parse(status.oldestPendingAtUtc)) / 3_600_000
     : 0;
+  // The link is optional: while it is off and nothing was ever queued, the queue screens are noise.
+  const inUse = status !== null && (status.enabled || status.pending + status.sent + status.rejected > 0);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 pb-20">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">مزامنة الإيصالات مع مصلحة الضرائب</h1>
-        <button
-          type="button"
-          onClick={() => void syncNow()}
-          disabled={syncing}
-          className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50"
-        >
-          زامن دلوقتي (F5)
-        </button>
+        <h1 className="text-xl font-bold">
+          الربط مع مصلحة الضرائب (الإيصال الإلكتروني) <span className="text-base font-normal text-slate-400">· اختياري</span>
+        </h1>
+        {inUse && (
+          <button
+            type="button"
+            onClick={() => void syncNow()}
+            disabled={syncing}
+            className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50"
+          >
+            زامن دلوقتي (F5)
+          </button>
+        )}
       </div>
 
       {error && (
@@ -86,9 +92,13 @@ export default function SyncPage() {
       )}
 
       {status && !status.enabled && (
-        <p role="status" className="rounded-lg bg-amber-950 px-4 py-2 text-amber-300">
-          الإرسال للضرائب مقفول. الفواتير بتتحفظ في الطابور وهتتبعت لما تفعّله من الإعدادات تحت.
-        </p>
+        <section role="status" className="space-y-1 rounded-xl border border-slate-800 bg-slate-900 px-5 py-4">
+          <p className="font-semibold text-slate-200">الربط مقفول، والبرنامج شغال عادي من غيره.</p>
+          <p className="text-sm text-slate-400">
+            البيع والمخزون والتقارير مش محتاجين الربط. لو الصيدلية مسجلة في منظومة الإيصال الإلكتروني، علّم على &quot;إرسال الإيصالات&quot; تحت
+            واملا البيانات. من ساعتها كل فاتورة جديدة هتتبعت تلقائياً؛ الفواتير اللي اتعملت والربط مقفول مش بتتبعت.
+          </p>
+        </section>
       )}
 
       {status && status.enabled && status.missingFields.length > 0 && (
@@ -104,7 +114,7 @@ export default function SyncPage() {
         </p>
       )}
 
-      {status && (
+      {status && inUse && (
         <section className="grid gap-4 sm:grid-cols-3" data-testid="sync-summary">
           <Stat label="مستني الإرسال" value={status.pending} tone="text-amber-300" />
           <Stat label="اتبعت" value={status.sent} tone="text-emerald-400" />
@@ -120,14 +130,16 @@ export default function SyncPage() {
         </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">إيصالات محتاجة انتباه</h2>
-        <ProblemList problems={status?.problems ?? []} retrying={retrying} onRetry={(id) => void retry(id)} />
-      </section>
+      {inUse && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">إيصالات محتاجة انتباه</h2>
+          <ProblemList problems={status?.problems ?? []} retrying={retrying} onRetry={(id) => void retry(id)} />
+        </section>
+      )}
 
       <EtaSettingsForm onSaved={() => void refresh()} />
 
-      <ShortcutBar shortcuts={[{ key: "F5", label: "زامن دلوقتي" }]} />
+      <ShortcutBar shortcuts={inUse ? [{ key: "F5", label: "زامن دلوقتي" }] : []} />
     </main>
   );
 }

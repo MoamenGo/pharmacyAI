@@ -7,7 +7,8 @@ const LINKS = [
   { href: "/", label: "الرئيسية" },
   { href: "/pos/", label: "البيع" },
   { href: "/inventory/", label: "المخزون" },
-  { href: "/sync/", label: "المزامنة" },
+  { href: "/sales/", label: "المبيعات" },
+  { href: "/sync/", label: "الضرائب" },
 ];
 
 export function NavBar() {

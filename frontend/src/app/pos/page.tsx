@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ShortcutBar } from "@/components/ShortcutBar";
+import { AlternativesDialog } from "@/components/pos/AlternativesDialog";
 import { CartTable } from "@/components/pos/CartTable";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { ProductSearch } from "@/components/pos/ProductSearch";
@@ -25,6 +26,7 @@ export default function PosPage() {
   const [pharmacyName, setPharmacyName] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [printRequest, setPrintRequest] = useState(0);
+  const [showAlternatives, setShowAlternatives] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
@@ -113,12 +115,24 @@ export default function PosPage() {
   };
 
   const selected = cart.selectedKey;
+  const selectedDrug = cart.lines.find((l) => l.key === selected)?.drug ?? null;
+
+  const addAlternative = async (drugId: string) => {
+    setShowAlternatives(false);
+    try {
+      cart.add((await api.getDrug(drugId)).drug);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+    focusSearch();
+  };
 
   useFunctionKeys({
     F2: newSale,
     F3: () => searchRef.current?.select(),
     F4: () => selected && cart.toggleUnit(selected),
     F6: () => quantityRef.current?.focus(),
+    F7: () => selectedDrug && setShowAlternatives(true),
     F8: () => selected && cart.remove(selected),
     F9: () => paidRef.current?.focus(),
     F10: () => (lastSale && cart.lines.length === 0 ? print() : void submit()),
@@ -194,12 +208,24 @@ export default function PosPage() {
 
       {lastSale && <Receipt sale={lastSale} pharmacyName={pharmacyName} />}
 
+      {showAlternatives && selectedDrug && (
+        <AlternativesDialog
+          drug={selectedDrug}
+          onPick={(id) => void addAlternative(id)}
+          onClose={() => {
+            setShowAlternatives(false);
+            focusSearch();
+          }}
+        />
+      )}
+
       <ShortcutBar
         shortcuts={[
           { key: "F2", label: "فاتورة جديدة" },
           { key: "F3", label: "بحث" },
           { key: "F4", label: "علبة / شريط" },
           { key: "F6", label: "الكمية" },
+          { key: "F7", label: "البدائل" },
           { key: "F8", label: "حذف الصنف" },
           { key: "F9", label: "المدفوع" },
           { key: "F10", label: "حفظ وطباعة" },
