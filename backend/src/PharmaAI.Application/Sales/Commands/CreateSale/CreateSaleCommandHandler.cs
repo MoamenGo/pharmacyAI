@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Abstractions;
 using PharmaAI.Application.Common;
+using PharmaAI.Application.Sync.Eta;
 using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -11,8 +12,8 @@ namespace PharmaAI.Application.Sales.Commands.CreateSale;
 
 /// <summary>
 /// Saves a sale and its stock deductions in one SaveChanges, so either the whole receipt is
-/// recorded, every line's stock is taken, a credit sale is added to the customer's balance and the receipt is queued for
-/// sync, or nothing changes. A concurrent write to the same batches or customer, or another till taking the same receipt
+/// recorded, every line's stock is taken, a credit sale is added to the customer's balance and, when the e-receipt is
+/// turned on, the receipt is queued for the tax authority, or nothing changes. A concurrent write to the same batches or customer, or another till taking the same receipt
 /// number, makes us retry on fresh data.
 /// </summary>
 public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider clock, PharmacyCalendar calendar)
@@ -23,6 +24,9 @@ public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider c
     public async Task<SaleDto> Handle(CreateSaleCommand request, CancellationToken cancellationToken)
     {
         var drugIds = request.Items.Select(i => i.DrugId).Distinct().ToList();
+        // The e-receipt is optional: a pharmacy that hasn't turned it on never queues anything, so turning it on later
+        // starts with that day's sales instead of a backlog the tax authority would refuse as too old.
+        var queueForEta = (await EtaSettingsStore.LoadAsync(db, cancellationToken)).Enabled;
 
         for (var attempt = 1; ; attempt++)
         {
@@ -54,8 +58,11 @@ public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider c
                 request.CardReference);
             var sale = Sale.Create(number, now, calendar.Today, items, payment);
             db.Sales.Add(sale);
-            // Same SaveChanges as the sale: a receipt can never be saved without being queued for the tax authority.
-            db.OutboxMessages.Add(OutboxMessage.ForEtaReceipt(sale.Id, sale.Number, now));
+            if (queueForEta)
+            {
+                // Same SaveChanges as the sale: once the e-receipt is on, a receipt can never be saved without being queued.
+                db.OutboxMessages.Add(OutboxMessage.ForEtaReceipt(sale.Id, sale.Number, now));
+            }
 
             try
             {

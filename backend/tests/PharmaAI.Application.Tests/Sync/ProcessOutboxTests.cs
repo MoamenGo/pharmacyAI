@@ -28,7 +28,7 @@ public sealed class ProcessOutboxTests : IDisposable
         }
     }
 
-    private async Task SetupAsync(bool configure = true)
+    private async Task SetupAsync(bool configure = true, bool enable = true)
     {
         await using var db = _database.CreateContext();
         var drug = InventoryTestData.Panadol();
@@ -36,6 +36,15 @@ public sealed class ProcessOutboxTests : IDisposable
         db.Drugs.Add(drug);
         await db.SaveChangesAsync();
         _drugId = drug.Id;
+
+        if (!configure && enable)
+        {
+            // Turned on, but none of the registration details filled in yet.
+            await new SaveEtaSettingsCommandHandler(db, _clock, new NoTrigger()).Handle(
+                new SaveEtaSettingsCommand(
+                    true, EtaEnvironment.PreProduction, "", null, "", "", "", null, "", "", "0", "", "", "", "", "4772"),
+                CancellationToken.None);
+        }
 
         if (configure)
         {
@@ -73,7 +82,7 @@ public sealed class ProcessOutboxTests : IDisposable
     }
 
     [Fact]
-    public async Task Without_settings_nothing_is_built_or_sent()
+    public async Task Without_the_registration_details_nothing_is_built_or_sent()
     {
         await SetupAsync(configure: false);
         await SellAsync();

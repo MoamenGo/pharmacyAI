@@ -82,6 +82,10 @@ Override it with `--Database:Path=<file>`.
   A batch is sellable through its expiry date, judged in Cairo local time.
 - Money crosses the API as integer piasters (`...Piasters` fields); the domain uses `decimal` EGP.
 - Each batch row has a version token, so two concurrent deductions can never spend the same stock.
+- The New drug dialog can look a product up in the bundled Egyptian drug list (about 25,000 medicines, Arabic and
+  English trade names, active ingredient, manufacturer and EGP price; CC0, see
+  `backend/src/PharmaAI.Infrastructure/Catalog/README.md`). Picking one fills the names, price and a guess at the
+  strips per box, all still editable. The list has no barcodes, so the barcode is always scanned.
 
 ## Sale rules
 
@@ -99,8 +103,11 @@ Override it with `--Database:Path=<file>`.
 
 ## Sync and the ETA e-receipt
 
-- Every sale writes an outbox row in the same transaction, so a saved sale is never lost from the tax queue,
-  even when the machine is offline. Sales that existed before the outbox was added are queued by the migration.
+- The e-receipt is optional and off by default; it is turned on from the Settings screen, and the Sync screen only
+  appears in the menu while it is on (or while old receipts still wait). While it is off, sales are not queued at all,
+  so turning it on later starts with that moment's sales.
+- While it is on, every sale writes an outbox row in the same transaction, so a saved sale is never lost from the tax
+  queue, even when the machine is offline.
 - A background worker wakes after each sale (and every 30 s) and sends due receipts to the Egyptian Tax Authority
   e-receipt API v1.2. Failures retry with backoff (30 s doubling, capped at 1 h); the Sync screen lists them.
 - Receipts are built in sale-number order and chained with `previousUUID`. A built receipt is frozen, so a resend
@@ -108,7 +115,7 @@ Override it with `--Database:Path=<file>`.
   `referenceOldUUID` pointing at the rejected one.
 - Medicines are sent VAT-exempt (`T1` / `V003`, rate 0), packs as `BOX` and strips as `EA`, item code = the GS1 barcode.
   Payment is sent as `C` (cash), `V` (card) or `O` (credit, since ETA has no code for selling on account).
-- Settings live on the Sync screen. Sending stays off until it is enabled and every field is filled.
+- Settings live on the Settings screen. Sending waits until every field is filled.
   The client secret and preshared key are never returned by the API; leave them empty to keep the saved values.
 - Set `Sync:Worker=false` to run the API without the background worker (tests do this).
 - Not yet: polling ETA for each receipt's final Valid/Invalid state after it is accepted, and signatures.

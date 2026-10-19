@@ -73,22 +73,28 @@ public sealed class SyncApiTests : IDisposable
     }
 
     [Fact]
-    public async Task A_sale_shows_up_as_pending_until_eta_is_set_up()
+    public async Task Sales_are_queued_only_once_the_e_receipt_is_turned_on()
     {
         var created = await _client.PostAsJsonAsync("/api/drugs", new
         {
             nameAr = "بانادول", barcode = "6221234567890", packUnitName = "علبة", subUnitName = "شريط", subUnitsPerPack = 3, publicPricePiasters = 4500,
         });
         var drugId = JsonDocument.Parse(await created.Content.ReadAsStringAsync()).RootElement.GetProperty("drug").GetProperty("id").GetGuid();
-        (await _client.PostAsJsonAsync($"/api/drugs/{drugId}/batches", new { batchNumber = "B1", expiryDate = "2030-12-31", packs = 1, looseSubUnits = 0 })).EnsureSuccessStatusCode();
-        (await _client.PostAsJsonAsync("/api/sales", new { items = new[] { new { drugId, unit = "pack", quantity = 1 } }, paidPiasters = 4500 })).EnsureSuccessStatusCode();
+        (await _client.PostAsJsonAsync($"/api/drugs/{drugId}/batches", new { batchNumber = "B1", expiryDate = "2030-12-31", packs = 2, looseSubUnits = 0 })).EnsureSuccessStatusCode();
+        async Task SellAsync() =>
+            (await _client.PostAsJsonAsync("/api/sales", new { items = new[] { new { drugId, unit = "pack", quantity = 1 } }, paidPiasters = 4500 })).EnsureSuccessStatusCode();
 
-        var status = await JsonAsync("/api/sync/status");
+        await SellAsync();
+        var off = await JsonAsync("/api/sync/status");
+        Assert.False(off.GetProperty("enabled").GetBoolean());
+        Assert.Equal(0, off.GetProperty("pending").GetInt32());
 
-        Assert.False(status.GetProperty("enabled").GetBoolean());
-        Assert.Equal(1, status.GetProperty("pending").GetInt32());
-        Assert.Contains("ClientId", status.GetProperty("missingFields").EnumerateArray().Select(f => f.GetString()));
-        Assert.Equal(HttpStatusCode.Accepted, (await _client.PostAsync("/api/sync/run", null)).StatusCode);
+        (await _client.PutAsJsonAsync("/api/sync/eta-settings", Settings("top-secret"))).EnsureSuccessStatusCode();
+        await SellAsync();
+
+        var on = await JsonAsync("/api/sync/status");
+        Assert.True(on.GetProperty("enabled").GetBoolean());
+        Assert.Equal(1, on.GetProperty("pending").GetInt32());
     }
 
     [Fact]

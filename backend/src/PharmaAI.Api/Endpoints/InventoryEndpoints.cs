@@ -1,4 +1,5 @@
 using MediatR;
+using PharmaAI.Application.Catalog.SearchCatalog;
 using PharmaAI.Application.Inventory.Commands.CreateDrug;
 using PharmaAI.Application.Inventory.Commands.DeductStock;
 using PharmaAI.Application.Inventory.Commands.ReceiveStock;
@@ -38,6 +39,9 @@ internal static class InventoryEndpoints
 
         drugs.MapPost("/{id:guid}/deductions", async (Guid id, DeductStockRequest body, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(new DeductStockCommand(id, body.QuantityInSubUnits), ct)));
+
+        api.MapGet("/catalog", async (string? search, int? limit, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new SearchCatalogQuery(search, limit ?? SearchCatalogQuery.DefaultLimit), ct)));
 
         return api;
     }
