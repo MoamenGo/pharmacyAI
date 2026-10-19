@@ -45,6 +45,7 @@ api.MapSettingsEndpoints();
 api.MapInventoryEndpoints();
 api.MapSalesEndpoints();
 api.MapSyncEndpoints();
+api.MapCustomersEndpoints();
 
 app.Run();
 

@@ -30,3 +30,27 @@ public class CreateSaleValidatorTests
     public void Rejects_bad_lines_or_payment(int quantity, SaleUnit unit, long paid) =>
         Assert.False(Validator.Validate(Sale(quantity, unit, paid)).IsValid);
 }
+
+public class CreateSalePaymentValidatorTests
+{
+    private static readonly CreateSaleCommandValidator Validator = new();
+
+    private static readonly CreateSaleItem[] OneBox = [new(Guid.NewGuid(), SaleUnit.Pack, 1)];
+
+    [Fact]
+    public void A_credit_sale_needs_a_customer()
+    {
+        var result = Validator.Validate(new CreateSaleCommand(OneBox, 0, PaymentMethod.Credit));
+
+        Assert.Equal("sale.customer_required", Assert.Single(result.Errors).ErrorCode);
+        Assert.True(Validator.Validate(new CreateSaleCommand(OneBox, 0, PaymentMethod.Credit, CustomerId: Guid.NewGuid())).IsValid);
+    }
+
+    [Fact]
+    public void Rejects_a_negative_discount_an_unknown_method_and_a_long_card_reference()
+    {
+        Assert.False(Validator.Validate(new CreateSaleCommand(OneBox, 4500, DiscountPiasters: -1)).IsValid);
+        Assert.False(Validator.Validate(new CreateSaleCommand(OneBox, 4500, (PaymentMethod)9)).IsValid);
+        Assert.False(Validator.Validate(new CreateSaleCommand(OneBox, 0, PaymentMethod.Card, CardReference: new string('1', 51))).IsValid);
+    }
+}

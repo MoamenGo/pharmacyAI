@@ -60,9 +60,16 @@ export interface StockReceipt {
 
 export type SaleUnit = "pack" | "subUnit";
 
+export type PaymentMethod = "cash" | "card" | "credit";
+
 export interface NewSale {
   items: { drugId: string; unit: SaleUnit; quantity: number }[];
+  /** Cash handed over; for a credit sale, the part paid now. Ignored for a card. */
   paidPiasters: number;
+  paymentMethod: PaymentMethod;
+  discountPiasters: number;
+  customerId: string | null;
+  cardReference: string | null;
 }
 
 export interface SaleLine {
@@ -75,6 +82,7 @@ export interface SaleLine {
   quantityInSubUnits: number;
   unitPricePiasters: number;
   lineTotalPiasters: number;
+  discountPiasters: number;
   batches: { batchNumber: string; expiryDate: string; quantityInSubUnits: number }[];
 }
 
@@ -83,9 +91,17 @@ export interface Sale {
   number: number;
   soldAtUtc: string;
   businessDate: string;
+  paymentMethod: PaymentMethod;
+  subtotalPiasters: number;
+  discountPiasters: number;
   totalPiasters: number;
   paidPiasters: number;
   changePiasters: number;
+  /** The part of a credit sale added to the customer's balance. */
+  duePiasters: number;
+  customerId: string | null;
+  customerName: string | null;
+  cardReference: string | null;
   lines: SaleLine[];
 }
 
@@ -93,7 +109,44 @@ export interface DailySales {
   date: string;
   count: number;
   totalPiasters: number;
-  sales: { id: string; number: number; soldAtUtc: string; lineCount: number; totalPiasters: number }[];
+  discountPiasters: number;
+  /** Cash sales plus what was paid up front on credit sales. */
+  cashPiasters: number;
+  cardPiasters: number;
+  /** Sales added to customers' balances. */
+  creditPiasters: number;
+  /** Cash customers paid towards their balances. */
+  collectedPiasters: number;
+  sales: {
+    id: string;
+    number: number;
+    soldAtUtc: string;
+    lineCount: number;
+    paymentMethod: PaymentMethod;
+    customerName: string | null;
+    totalPiasters: number;
+  }[];
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string | null;
+  balancePiasters: number;
+}
+
+export interface CustomerEntry {
+  kind: "sale" | "payment";
+  atUtc: string;
+  amountPiasters: number;
+  saleId: string | null;
+  saleNumber: number | null;
+  note: string | null;
+}
+
+export interface CustomerAccount {
+  customer: Customer;
+  entries: CustomerEntry[];
 }
 
 export type EtaEnvironment = "preProduction" | "production";
@@ -218,6 +271,17 @@ export const api = {
   createSale: (sale: NewSale) => request<Sale>("/api/sales", { method: "POST", body: JSON.stringify(sale) }),
 
   listSales: (date?: string) => request<DailySales>(`/api/sales${date ? `?date=${date}` : ""}`),
+
+  listCustomers: (search: string, owingOnly = false) =>
+    request<Customer[]>(`/api/customers?search=${encodeURIComponent(search)}${owingOnly ? "&owing=true" : ""}`),
+
+  getCustomer: (id: string) => request<CustomerAccount>(`/api/customers/${id}`),
+
+  createCustomer: (customer: { name: string; phone: string | null }) =>
+    request<Customer>("/api/customers", { method: "POST", body: JSON.stringify(customer) }),
+
+  recordCustomerPayment: (id: string, amountPiasters: number, note: string | null) =>
+    request<Customer>(`/api/customers/${id}/payments`, { method: "POST", body: JSON.stringify({ amountPiasters, note }) }),
 
   getSyncStatus: () => request<SyncStatus>("/api/sync/status"),
 

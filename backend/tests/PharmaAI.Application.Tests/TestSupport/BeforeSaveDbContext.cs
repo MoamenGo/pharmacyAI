@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Abstractions;
+using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -21,6 +22,10 @@ public sealed class BeforeSaveDbContext(IPharmaDbContext inner, Func<Task> befor
     public DbSet<Sale> Sales => inner.Sales;
 
     public DbSet<OutboxMessage> OutboxMessages => inner.OutboxMessages;
+
+    public DbSet<Customer> Customers => inner.Customers;
+
+    public DbSet<CustomerPayment> CustomerPayments => inner.CustomerPayments;
 
     public void ClearChangeTracker() => inner.ClearChangeTracker();
 

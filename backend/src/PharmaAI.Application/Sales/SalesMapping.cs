@@ -11,9 +11,16 @@ internal static class SalesMapping
             sale.Number,
             sale.SoldAtUtc,
             sale.BusinessDate,
+            sale.PaymentMethod,
+            Piasters.FromPounds(sale.Subtotal),
+            Piasters.FromPounds(sale.Discount),
             Piasters.FromPounds(sale.Total),
             Piasters.FromPounds(sale.Paid),
             Piasters.FromPounds(sale.Change),
+            Piasters.FromPounds(sale.Due),
+            sale.CustomerId,
+            sale.CustomerName,
+            sale.CardReference,
             sale.Lines
                 .OrderBy(l => l.LineNumber)
                 .Select(l => new SaleLineDto(
@@ -26,6 +33,7 @@ internal static class SalesMapping
                     l.QuantityInSubUnits,
                     Piasters.FromPounds(l.UnitPrice),
                     Piasters.FromPounds(l.LineTotal),
+                    Piasters.FromPounds(l.Discount),
                     l.Batches
                         .OrderBy(b => b.ExpiryDate)
                         .Select(b => new SaleLineBatchDto(b.BatchNumber, b.ExpiryDate, b.QuantityInSubUnits))

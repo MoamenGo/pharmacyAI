@@ -14,6 +14,7 @@ public sealed record SaleLineDto(
     int QuantityInSubUnits,
     long UnitPricePiasters,
     long LineTotalPiasters,
+    long DiscountPiasters,
     IReadOnlyList<SaleLineBatchDto> Batches);
 
 public sealed record SaleDto(
@@ -21,11 +22,38 @@ public sealed record SaleDto(
     long Number,
     DateTime SoldAtUtc,
     DateOnly BusinessDate,
+    PaymentMethod PaymentMethod,
+    long SubtotalPiasters,
+    long DiscountPiasters,
     long TotalPiasters,
     long PaidPiasters,
     long ChangePiasters,
+    long DuePiasters,
+    Guid? CustomerId,
+    string? CustomerName,
+    string? CardReference,
     IReadOnlyList<SaleLineDto> Lines);
 
-public sealed record SaleSummaryDto(Guid Id, long Number, DateTime SoldAtUtc, int LineCount, long TotalPiasters);
+public sealed record SaleSummaryDto(
+    Guid Id,
+    long Number,
+    DateTime SoldAtUtc,
+    int LineCount,
+    PaymentMethod PaymentMethod,
+    string? CustomerName,
+    long TotalPiasters);
 
-public sealed record DailySalesDto(DateOnly Date, int Count, long TotalPiasters, IReadOnlyList<SaleSummaryDto> Sales);
+/// <param name="CashPiasters">Cash taken for sales: cash sales plus what was paid up front on credit sales.</param>
+/// <param name="CardPiasters">Card sales.</param>
+/// <param name="CreditPiasters">Sales added to customers' balances.</param>
+/// <param name="CollectedPiasters">Cash customers paid towards their balances; the drawer holds this plus <paramref name="CashPiasters"/>.</param>
+public sealed record DailySalesDto(
+    DateOnly Date,
+    int Count,
+    long TotalPiasters,
+    long DiscountPiasters,
+    long CashPiasters,
+    long CardPiasters,
+    long CreditPiasters,
+    long CollectedPiasters,
+    IReadOnlyList<SaleSummaryDto> Sales);

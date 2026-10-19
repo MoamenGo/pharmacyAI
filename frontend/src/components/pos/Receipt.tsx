@@ -34,21 +34,50 @@ export function Receipt({ sale, pharmacyName }: { sale: Sale; pharmacyName: stri
         </tbody>
       </table>
       <hr />
+      {sale.discountPiasters > 0 && (
+        <>
+          <ReceiptRow label="المجموع" amount={sale.subtotalPiasters} />
+          <ReceiptRow label="خصم" amount={-sale.discountPiasters} />
+        </>
+      )}
       <div className="receipt-row receipt-total">
         <span>الإجمالي</span>
         <span dir="ltr">{formatPiasters(sale.totalPiasters)}</span>
       </div>
-      <div className="receipt-row">
-        <span>المدفوع</span>
-        <span dir="ltr">{formatPiasters(sale.paidPiasters)}</span>
-      </div>
-      <div className="receipt-row">
-        <span>الباقي</span>
-        <span dir="ltr">{formatPiasters(sale.changePiasters)}</span>
-      </div>
+      {sale.paymentMethod === "cash" && (
+        <>
+          <ReceiptRow label="المدفوع نقدي" amount={sale.paidPiasters} />
+          <ReceiptRow label="الباقي" amount={sale.changePiasters} />
+        </>
+      )}
+      {sale.paymentMethod === "card" && (
+        <div className="receipt-row">
+          <span>مدفوع بالفيزا</span>
+          <span dir="ltr">{sale.cardReference ?? ""}</span>
+        </div>
+      )}
+      {sale.paymentMethod === "credit" && (
+        <>
+          <div className="receipt-row">
+            <span>العميل</span>
+            <span>{sale.customerName}</span>
+          </div>
+          <ReceiptRow label="المدفوع" amount={sale.paidPiasters} />
+          <ReceiptRow label="على الحساب" amount={sale.duePiasters} />
+        </>
+      )}
       <hr />
       <p className="receipt-footer">شكراً لزيارتكم، مع تمنياتنا بالشفاء</p>
     </section>,
     document.body,
+  );
+}
+
+function ReceiptRow({ label, amount }: { label: string; amount: number }) {
+  return (
+    <div className="receipt-row">
+      <span>{label}</span>
+      <span dir="ltr">{formatPiasters(amount)}</span>
+    </div>
   );
 }

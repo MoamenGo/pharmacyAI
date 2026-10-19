@@ -16,6 +16,21 @@ export function parsePounds(input: string): number | null {
   return pounds * 100 + piasters;
 }
 
+/**
+ * A receipt discount typed as pounds ("5", "2.50") or a percentage of the subtotal ("10%").
+ * Empty means no discount; returns null when the text is neither.
+ */
+export function parseDiscount(input: string, subtotalPiasters: number): number | null {
+  const text = input.trim();
+  if (text === "") return 0;
+  const percent = /^(\d{1,3}(?:[.,]\d{1,2})?)\s*%$/.exec(text);
+  if (percent) {
+    const rate = Number(percent[1].replace(",", "."));
+    return rate > 100 ? null : Math.round((subtotalPiasters * rate) / 100);
+  }
+  return parsePounds(text);
+}
+
 /** "2 علبة + 1 شريط" from a sub-unit count. */
 export function formatQuantity(subUnits: number, perPack: number, packName: string, subName: string): string {
   if (perPack <= 1) return `${subUnits} ${packName}`;

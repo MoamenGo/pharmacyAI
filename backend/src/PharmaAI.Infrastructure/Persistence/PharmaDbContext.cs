@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Common;
 using PharmaAI.Application.Abstractions;
+using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -20,6 +21,10 @@ public sealed class PharmaDbContext(DbContextOptions<PharmaDbContext> options) :
     public DbSet<Sale> Sales => Set<Sale>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<CustomerPayment> CustomerPayments => Set<CustomerPayment>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 

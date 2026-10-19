@@ -1,6 +1,7 @@
 using System.Text.Json;
 using PharmaAI.Application.Sync.Eta;
 using PharmaAI.Application.Tests.TestSupport;
+using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
 
@@ -47,7 +48,7 @@ public class EtaReceiptBuilderTests
         var drug = InventoryTestData.Panadol();
         drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), 9, InventoryTestData.ReceivedAt);
         var soldAt = new DateTime(2026, 10, 18, 9, 30, 5, DateTimeKind.Utc);
-        var sale = Sale.Create(42, soldAt, new DateOnly(2026, 10, 18), [new(drug, SaleUnit.Pack, 1), new(drug, SaleUnit.SubUnit, 2)], 100m);
+        var sale = Sale.Create(42, soldAt, new DateOnly(2026, 10, 18), [new(drug, SaleUnit.Pack, 1), new(drug, SaleUnit.SubUnit, 2)], SalePayment.Cash(100m));
         return (sale, new() { [drug.Id] = drug });
     }
 
@@ -96,6 +97,49 @@ public class EtaReceiptBuilderTests
         Assert.Equal("75", root.GetProperty("totalAmount").GetRawText());
         Assert.Equal("C", root.GetProperty("paymentMethod").GetString());
         Assert.Contains("صيدلية الشفاء", receipt.Json);
+    }
+
+    [Fact]
+    public void A_discounted_credit_sale_sends_each_lines_share_and_the_others_payment_code()
+    {
+        var drug = InventoryTestData.Panadol();
+        drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), 9, InventoryTestData.ReceivedAt);
+        var customer = Customer.Create("أحمد علي", null, InventoryTestData.ReceivedAt);
+        var sale = Sale.Create(
+            42, new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), new DateOnly(2026, 10, 19),
+            [new(drug, SaleUnit.Pack, 1), new(drug, SaleUnit.SubUnit, 2)],
+            new SalePayment(PaymentMethod.Credit, 0m, Discount: 10m, Customer: customer));
+
+        var receipt = EtaReceiptBuilder.Build(sale, new Dictionary<Guid, Drug> { [drug.Id] = drug }, Settings, "", referenceOldUuid: null);
+
+        using var json = JsonDocument.Parse(receipt.Json);
+        var root = json.RootElement;
+        var items = root.GetProperty("itemData").EnumerateArray().ToList();
+        Assert.Equal(["45", "30"], items.Select(i => i.GetProperty("totalSale").GetRawText()));
+        Assert.Equal(["39", "26"], items.Select(i => i.GetProperty("netSale").GetRawText()));
+        Assert.Equal(["39", "26"], items.Select(i => i.GetProperty("total").GetRawText()));
+        Assert.Equal(["6", "4"], items.Select(i => i.GetProperty("commercialDiscountData")[0].GetProperty("amount").GetRawText()));
+        Assert.Equal(("75", "10", "65", "65"), (
+            root.GetProperty("totalSales").GetRawText(),
+            root.GetProperty("totalCommercialDiscount").GetRawText(),
+            root.GetProperty("netAmount").GetRawText(),
+            root.GetProperty("totalAmount").GetRawText()));
+        Assert.Equal("O", root.GetProperty("paymentMethod").GetString());
+    }
+
+    [Fact]
+    public void A_card_sale_is_sent_as_visa_without_discount_fields()
+    {
+        var drug = InventoryTestData.Panadol();
+        drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), 3, InventoryTestData.ReceivedAt);
+        var sale = Sale.Create(
+            1, new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), new DateOnly(2026, 10, 19),
+            [new(drug, SaleUnit.Pack, 1)], new SalePayment(PaymentMethod.Card, 0m));
+
+        var receipt = EtaReceiptBuilder.Build(sale, new Dictionary<Guid, Drug> { [drug.Id] = drug }, Settings, "", referenceOldUuid: null);
+
+        Assert.Contains("\"paymentMethod\":\"V\"", receipt.Json);
+        Assert.DoesNotContain("Discount", receipt.Json);
     }
 
     [Fact]

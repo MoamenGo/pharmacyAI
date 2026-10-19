@@ -71,20 +71,23 @@ public sealed class OutboxEnqueueTests : IDisposable
         var migrator = db.GetService<IMigrator>();
         migrator.Migrate("AddSales");
 
-        var drug = InventoryTestData.Panadol();
-        drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), 6, InventoryTestData.ReceivedAt);
-        db.Drugs.Add(drug);
+        // Written as SQL: today's model has columns the AddSales schema does not.
+        var id = Guid.NewGuid();
         var soldAt = new DateTime(2026, 10, 17, 10, 0, 0, DateTimeKind.Utc);
-        var old = Sale.Create(7, soldAt, new DateOnly(2026, 10, 17), [new SaleItem(drug, SaleUnit.Pack, 1)], 45m);
-        db.Sales.Add(old);
-        db.SaveChanges();
-        db.ChangeTracker.Clear();
+        db.Database.ExecuteSql($"""
+            INSERT INTO "Sales" ("Id", "Number", "SoldAtUtc", "BusinessDate", "Total", "Paid")
+            VALUES ({id}, 7, {soldAt}, {new DateOnly(2026, 10, 17)}, '45.0', '50.0')
+            """);
 
         migrator.Migrate();
 
         var message = Assert.Single(db.OutboxMessages.AsNoTracking());
-        Assert.Equal((old.Id, 7L, OutboxStatus.Pending, soldAt), (message.SubjectId, message.Sequence, message.Status, message.NextAttemptAtUtc));
+        Assert.Equal((id, 7L, OutboxStatus.Pending, soldAt), (message.SubjectId, message.Sequence, message.Status, message.NextAttemptAtUtc));
         Assert.NotEqual(Guid.Empty, message.Id);
+
+        // Sales from before payment methods were cash sales without a discount.
+        var sale = db.Sales.AsNoTracking().Single();
+        Assert.Equal((PaymentMethod.Cash, 0m, 45m, 5m), (sale.PaymentMethod, sale.Discount, sale.Total, sale.Change));
     }
 
     public void Dispose() => _database.Dispose();

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Abstractions;
 using PharmaAI.Application.Common;
+using PharmaAI.Domain.Customers;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
 using PharmaAI.Domain.Sync;
@@ -10,8 +11,9 @@ namespace PharmaAI.Application.Sales.Commands.CreateSale;
 
 /// <summary>
 /// Saves a sale and its stock deductions in one SaveChanges, so either the whole receipt is
-/// recorded, every line's stock is taken and the receipt is queued for sync, or nothing changes. A concurrent write to the same
-/// batches, or another till taking the same receipt number, makes us retry on fresh data.
+/// recorded, every line's stock is taken, a credit sale is added to the customer's balance and the receipt is queued for
+/// sync, or nothing changes. A concurrent write to the same batches or customer, or another till taking the same receipt
+/// number, makes us retry on fresh data.
 /// </summary>
 public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider clock, PharmacyCalendar calendar)
     : IRequestHandler<CreateSaleCommand, SaleDto>
@@ -36,9 +38,21 @@ public sealed class CreateSaleCommandHandler(IPharmaDbContext db, TimeProvider c
                     i.Quantity))
                 .ToList();
 
+            var customer = request.CustomerId is { } customerId
+                ? await db.Customers.SingleOrDefaultAsync(c => c.Id == customerId, cancellationToken)
+                    ?? throw new NotFoundException(nameof(Customer), customerId)
+                : null;
+
             var number = (await db.Sales.MaxAsync(s => (long?)s.Number, cancellationToken) ?? 0) + 1;
             var now = clock.GetUtcNow().UtcDateTime;
-            var sale = Sale.Create(number, now, calendar.Today, items, Piasters.ToPounds(request.PaidPiasters));
+            var payment = new SalePayment(
+                request.PaymentMethod,
+                Piasters.ToPounds(request.PaidPiasters),
+                Piasters.ToPounds(request.DiscountPiasters),
+                // Only a credit sale touches the customer's account.
+                request.PaymentMethod == PaymentMethod.Credit ? customer : null,
+                request.CardReference);
+            var sale = Sale.Create(number, now, calendar.Today, items, payment);
             db.Sales.Add(sale);
             // Same SaveChanges as the sale: a receipt can never be saved without being queued for the tax authority.
             db.OutboxMessages.Add(OutboxMessage.ForEtaReceipt(sale.Id, sale.Number, now));

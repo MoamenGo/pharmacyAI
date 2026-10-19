@@ -63,10 +63,15 @@ Override it with `--Database:Path=<file>`.
 | Sale | F2 | New sale (press twice to discard a sale in progress) |
 | Sale | F3 | Focus search (scan a barcode, or type a name and pick with ↑/↓ + Enter) |
 | Sale | F4 | Switch the selected line between packs and strips |
+| Sale | F5 | Switch the payment method: cash, card, credit |
 | Sale | F6 | Edit the selected line's quantity (Enter returns to search) |
+| Sale | F7 | Enter a discount on the whole receipt (pounds, or a percentage like 10%) |
 | Sale | F8 | Remove the selected line |
-| Sale | F9 | Enter the amount paid (empty means exact change) |
+| Sale | F9 | Enter the amount paid (cash: empty means exact change; credit: what is paid now) |
 | Sale | F10 | Save and print the receipt; after a sale, reprint it |
+| Customers | F2 | Add a customer |
+| Customers | F3 | Focus search (name or phone) |
+| Customers | F9 | Enter a payment for the selected customer |
 | Sync | F5 | Send queued receipts to the tax authority now |
 
 ## Inventory rules
@@ -80,10 +85,16 @@ Override it with `--Database:Path=<file>`.
 
 ## Sale rules
 
-- A sale is cash only and is saved in one step: every line takes its stock FEFO, or nothing is saved.
+- A sale is saved in one step: every line takes its stock FEFO, or nothing is saved.
   Each line records the batches it came from, for recalls, returns and tax reporting.
 - Lines sell whole packs at the public price or loose strips at the strip price (pack price ÷ strips, rounded to the piaster).
 - Receipt numbers are sequential. If two tills save at once, the second retries with the next number and fresh stock.
+- A sale is paid in cash, by card, or on credit. A card sale is paid in full and can keep the terminal's reference.
+  A credit sale needs a customer; what is not paid up front goes on the customer's balance, and the customer pays it
+  off later from the Customers screen. Two tills changing the same balance at once never lose either change.
+- A discount applies to the whole receipt. It is shared across the lines in proportion to their totals (leftover
+  piasters go to the biggest line), and each line's share is sent to ETA as a commercial discount.
+- The day's sales list splits takings into cash, card, credit and account payments.
 - The receipt is printed with the system print dialog on 80 mm thermal paper; the pharmacy name comes from the Home screen.
 
 ## Sync and the ETA e-receipt
@@ -96,6 +107,7 @@ Override it with `--Database:Path=<file>`.
   carries the same UUID. A receipt ETA rejects can be corrected and resent from the Sync screen; it is rebuilt with
   `referenceOldUUID` pointing at the rejected one.
 - Medicines are sent VAT-exempt (`T1` / `V003`, rate 0), packs as `BOX` and strips as `EA`, item code = the GS1 barcode.
+  Payment is sent as `C` (cash), `V` (card) or `O` (credit, since ETA has no code for selling on account).
 - Settings live on the Sync screen. Sending stays off until it is enabled and every field is filled.
   The client secret and preshared key are never returned by the API; leave them empty to keep the saved values.
 - Set `Sync:Worker=false` to run the API without the background worker (tests do this).
