@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PharmaAI.Domain.Catalog;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -13,6 +14,10 @@ public interface IPharmaDbContext
     DbSet<Drug> Drugs { get; }
 
     DbSet<StockBatch> StockBatches { get; }
+
+    DbSet<StockAdjustment> StockAdjustments { get; }
+
+    DbSet<CatalogDrug> CatalogDrugs { get; }
 
     DbSet<Sale> Sales { get; }
 

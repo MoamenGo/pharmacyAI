@@ -12,6 +12,9 @@ public sealed class Drug
     public const int BarcodeMaxLength = 64;
     public const int UnitNameMaxLength = 30;
     public const int MaxSubUnitsPerPack = 1000;
+    public const int ActiveIngredientMaxLength = 400;
+    public const int ManufacturerMaxLength = 150;
+    public const int MaxReorderLevelInPacks = 100_000;
 
     private readonly List<StockBatch> _batches = [];
 
@@ -40,6 +43,14 @@ public sealed class Drug
     /// <summary>Consumer price of one full pack, in EGP.</summary>
     public decimal PublicPrice { get; private set; }
 
+    /// <summary>The scientific name (المادة الفعالة), used to find alternatives; null when unknown.</summary>
+    public string? ActiveIngredient { get; private set; }
+
+    public string? Manufacturer { get; private set; }
+
+    /// <summary>Below this many full packs of sellable stock the drug is listed as a shortage; 0 turns the alert off.</summary>
+    public int ReorderLevelInPacks { get; private set; }
+
     public DateTime CreatedAtUtc { get; private set; }
 
     public IReadOnlyCollection<StockBatch> Batches => _batches;
@@ -55,31 +66,75 @@ public sealed class Drug
         string subUnitName,
         int subUnitsPerPack,
         decimal publicPrice,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? activeIngredient = null,
+        string? manufacturer = null,
+        int reorderLevelInPacks = 0)
     {
         if (subUnitsPerPack is < 1 or > MaxSubUnitsPerPack)
         {
             throw new DomainException("drug.invalid_sub_units", $"A pack must hold between 1 and {MaxSubUnitsPerPack} sub-units.");
         }
 
+        var drug = new Drug
+        {
+            Id = Guid.NewGuid(),
+            PackUnitName = packUnitName.Trim(),
+            SubUnitName = subUnitName.Trim(),
+            SubUnitsPerPack = subUnitsPerPack,
+            CreatedAtUtc = createdAtUtc,
+        };
+        drug.Update(nameAr, nameEn, barcode, publicPrice, activeIngredient, manufacturer, reorderLevelInPacks);
+        return drug;
+    }
+
+    /// <summary>
+    /// Changes what the pharmacist may correct after the drug was created. The pack size is fixed:
+    /// stock is counted in sub-units, so changing it would silently change every balance.
+    /// Past receipts keep their own copy of the name and price.
+    /// </summary>
+    public void Update(
+        string nameAr,
+        string? nameEn,
+        string barcode,
+        decimal publicPrice,
+        string? activeIngredient,
+        string? manufacturer,
+        int reorderLevelInPacks)
+    {
         if (publicPrice <= 0)
         {
             throw new DomainException("drug.invalid_price", "Public price must be greater than zero.");
         }
 
-        return new Drug
+        if (reorderLevelInPacks is < 0 or > MaxReorderLevelInPacks)
         {
-            Id = Guid.NewGuid(),
-            NameAr = nameAr.Trim(),
-            NameEn = string.IsNullOrWhiteSpace(nameEn) ? null : nameEn.Trim(),
-            Barcode = barcode.Trim(),
-            PackUnitName = packUnitName.Trim(),
-            SubUnitName = subUnitName.Trim(),
-            SubUnitsPerPack = subUnitsPerPack,
-            PublicPrice = publicPrice,
-            CreatedAtUtc = createdAtUtc,
-        };
+            throw new DomainException("drug.invalid_reorder_level", $"The reorder level must be between 0 and {MaxReorderLevelInPacks} packs.");
+        }
+
+        NameAr = nameAr.Trim();
+        NameEn = Optional(nameEn);
+        Barcode = barcode.Trim();
+        PublicPrice = publicPrice;
+        ActiveIngredient = Optional(activeIngredient);
+        Manufacturer = Optional(manufacturer);
+        ReorderLevelInPacks = reorderLevelInPacks;
     }
+
+    /// <summary>
+    /// Removes stock that can no longer be sold (expired, damaged, lost) from one batch.
+    /// Unlike a sale this may take from an expired batch, which is the point of it.
+    /// </summary>
+    public StockBatch WriteOff(Guid batchId, int quantityInSubUnits)
+    {
+        var batch = _batches.SingleOrDefault(b => b.Id == batchId)
+            ?? throw new DomainException("stock.batch_not_found", $"Batch {batchId} does not belong to this drug.");
+
+        batch.Take(quantityInSubUnits);
+        return batch;
+    }
+
+    private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
     /// Records received stock. Stock with the same batch number and expiry is merged into

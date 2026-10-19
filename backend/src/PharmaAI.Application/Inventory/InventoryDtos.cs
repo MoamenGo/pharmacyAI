@@ -12,7 +12,11 @@ public sealed record DrugSummaryDto(
     long SubUnitPricePiasters,
     int SellableQuantityInSubUnits,
     int ExpiredQuantityInSubUnits,
-    DateOnly? NearestExpiry);
+    DateOnly? NearestExpiry,
+    string? ActiveIngredient,
+    string? Manufacturer,
+    int ReorderLevelInPacks,
+    bool IsShort);
 
 public sealed record StockBatchDto(
     Guid Id,

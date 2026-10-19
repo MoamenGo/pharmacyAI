@@ -72,23 +72,46 @@ public sealed class SyncApiTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, write.StatusCode);
     }
 
-    [Fact]
-    public async Task A_sale_shows_up_as_pending_until_eta_is_set_up()
+    private async Task SellOneAsync(string barcode)
     {
         var created = await _client.PostAsJsonAsync("/api/drugs", new
         {
-            nameAr = "بانادول", barcode = "6221234567890", packUnitName = "علبة", subUnitName = "شريط", subUnitsPerPack = 3, publicPricePiasters = 4500,
+            nameAr = "بانادول", barcode, packUnitName = "علبة", subUnitName = "شريط", subUnitsPerPack = 3, publicPricePiasters = 4500,
         });
         var drugId = JsonDocument.Parse(await created.Content.ReadAsStringAsync()).RootElement.GetProperty("drug").GetProperty("id").GetGuid();
         (await _client.PostAsJsonAsync($"/api/drugs/{drugId}/batches", new { batchNumber = "B1", expiryDate = "2030-12-31", packs = 1, looseSubUnits = 0 })).EnsureSuccessStatusCode();
         (await _client.PostAsJsonAsync("/api/sales", new { items = new[] { new { drugId, unit = "pack", quantity = 1 } }, paidPiasters = 4500 })).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task The_tax_authority_link_is_optional_and_off_by_default()
+    {
+        await SellOneAsync("6221234567890");
 
         var status = await JsonAsync("/api/sync/status");
 
         Assert.False(status.GetProperty("enabled").GetBoolean());
+        Assert.Equal(0, status.GetProperty("pending").GetInt32());
+        Assert.Equal(HttpStatusCode.Accepted, (await _client.PostAsync("/api/sync/run", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Once_switched_on_a_sale_waits_as_pending_until_the_settings_are_complete()
+    {
+        var incomplete = new
+        {
+            enabled = true, environment = "preProduction", clientId = "", clientSecret = (string?)null, posSerial = "", posOsVersion = "",
+            posModelFramework = "", presharedKey = (string?)null, rin = "", companyTradeName = "", branchCode = "0", governate = "",
+            regionCity = "", street = "", buildingNumber = "", activityCode = "4772",
+        };
+        (await _client.PutAsJsonAsync("/api/sync/eta-settings", incomplete)).EnsureSuccessStatusCode();
+
+        await SellOneAsync("6221234567890");
+
+        var status = await JsonAsync("/api/sync/status");
+        Assert.True(status.GetProperty("enabled").GetBoolean());
         Assert.Equal(1, status.GetProperty("pending").GetInt32());
         Assert.Contains("ClientId", status.GetProperty("missingFields").EnumerateArray().Select(f => f.GetString()));
-        Assert.Equal(HttpStatusCode.Accepted, (await _client.PostAsync("/api/sync/run", null)).StatusCode);
     }
 
     [Fact]

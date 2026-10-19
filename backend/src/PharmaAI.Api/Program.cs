@@ -6,6 +6,7 @@ using PharmaAI.Api;
 using PharmaAI.Api.Endpoints;
 using PharmaAI.Application;
 using PharmaAI.Infrastructure;
+using PharmaAI.Infrastructure.Catalog;
 using PharmaAI.Infrastructure.Persistence;
 
 const string DesktopCorsPolicy = "desktop";
@@ -33,7 +34,16 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    await scope.ServiceProvider.GetRequiredService<PharmaDbContext>().Database.MigrateAsync();
+    var db = scope.ServiceProvider.GetRequiredService<PharmaDbContext>();
+    await db.Database.MigrateAsync();
+    if (app.Configuration.GetValue("Catalog:Import", true))
+    {
+        var imported = await CatalogImporter.ImportIfOutdatedAsync(db);
+        if (imported > 0)
+        {
+            app.Logger.LogInformation("Loaded {Count} drugs from the bundled Egyptian drug list ({Version})", imported, CatalogImporter.Version);
+        }
+    }
 }
 
 app.UseExceptionHandler();
@@ -43,6 +53,8 @@ var api = app.MapGroup("/api");
 api.MapSystemEndpoints();
 api.MapSettingsEndpoints();
 api.MapInventoryEndpoints();
+api.MapCatalogEndpoints();
+api.MapReportEndpoints();
 api.MapSalesEndpoints();
 api.MapSyncEndpoints();
 

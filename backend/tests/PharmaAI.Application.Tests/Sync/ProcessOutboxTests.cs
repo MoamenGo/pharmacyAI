@@ -73,9 +73,17 @@ public sealed class ProcessOutboxTests : IDisposable
     }
 
     [Fact]
-    public async Task Without_settings_nothing_is_built_or_sent()
+    public async Task Switched_on_but_incomplete_settings_queue_the_sale_but_build_and_send_nothing()
     {
         await SetupAsync(configure: false);
+        await using (var db = _database.CreateContext())
+        {
+            await new SaveEtaSettingsCommandHandler(db, _clock, new NoTrigger()).Handle(
+                new SaveEtaSettingsCommand(
+                    true, EtaEnvironment.PreProduction, "", null, "", "", "", null, "", "", "0", "", "", "", "", "4772"),
+                CancellationToken.None);
+        }
+
         await SellAsync();
 
         Assert.False((await ProcessAsync()).Configured);

@@ -5,6 +5,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The Egyptian drug list (CC0), loaded into CatalogDrugs at startup. -->
+    <EmbeddedResource Include="Catalog\egyptian-drugs.csv.gz" LogicalName="PharmaAI.Infrastructure.Catalog.egyptian-drugs.csv.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />

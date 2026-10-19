@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PharmaAI.Application.Abstractions;
+using PharmaAI.Domain.Catalog;
 using PharmaAI.Domain.Entities;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -17,6 +18,10 @@ public sealed class BeforeSaveDbContext(IPharmaDbContext inner, Func<Task> befor
     public DbSet<Drug> Drugs => inner.Drugs;
 
     public DbSet<StockBatch> StockBatches => inner.StockBatches;
+
+    public DbSet<StockAdjustment> StockAdjustments => inner.StockAdjustments;
+
+    public DbSet<CatalogDrug> CatalogDrugs => inner.CatalogDrugs;
 
     public DbSet<Sale> Sales => inner.Sales;
 

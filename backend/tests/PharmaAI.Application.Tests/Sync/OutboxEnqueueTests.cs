@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using PharmaAI.Application.Common;
 using PharmaAI.Application.Sales.Commands.CreateSale;
+using PharmaAI.Application.Sync;
+using PharmaAI.Application.Sync.Commands.SaveEtaSettings;
+using PharmaAI.Application.Sync.Eta;
 using PharmaAI.Application.Tests.TestSupport;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -19,13 +22,29 @@ public sealed class OutboxEnqueueTests : IDisposable
 
     private readonly SqliteTestDatabase _database = new();
 
-    private async Task<Guid> SeedDrugAsync(int boxes = 2)
+    private sealed class NoTrigger : ISyncTrigger
+    {
+        public void RequestSync()
+        {
+        }
+    }
+
+    private async Task<Guid> SeedDrugAsync(int boxes = 2, bool etaOn = true)
     {
         await using var db = _database.CreateContext();
         var drug = InventoryTestData.Panadol();
         drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), boxes * 3, InventoryTestData.ReceivedAt);
         db.Drugs.Add(drug);
         await db.SaveChangesAsync();
+
+        if (etaOn)
+        {
+            // Only switched on: queuing does not need the rest of the settings, sending does.
+            await new SaveEtaSettingsCommandHandler(db, Clock, new NoTrigger()).Handle(
+                new SaveEtaSettingsCommand(true, EtaEnvironment.PreProduction, "", null, "", "", "", null, "", "", "0", "", "", "", "", "4772"),
+                CancellationToken.None);
+        }
+
         return drug.Id;
     }
 
@@ -52,6 +71,18 @@ public sealed class OutboxEnqueueTests : IDisposable
     }
 
     [Fact]
+    public async Task With_the_tax_authority_link_off_sales_are_saved_but_not_queued()
+    {
+        var id = await SeedDrugAsync(etaOn: false);
+
+        await SellAsync(id);
+
+        await using var db = _database.CreateContext();
+        Assert.Single(db.Sales);
+        Assert.Empty(db.OutboxMessages);
+    }
+
+    [Fact]
     public async Task A_failed_sale_queues_nothing()
     {
         var id = await SeedDrugAsync(boxes: 1);
@@ -71,19 +102,18 @@ public sealed class OutboxEnqueueTests : IDisposable
         var migrator = db.GetService<IMigrator>();
         migrator.Migrate("AddSales");
 
-        var drug = InventoryTestData.Panadol();
-        drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), 6, InventoryTestData.ReceivedAt);
-        db.Drugs.Add(drug);
+        // Written with SQL: the current model has columns this old schema does not.
+        var saleId = Guid.NewGuid();
         var soldAt = new DateTime(2026, 10, 17, 10, 0, 0, DateTimeKind.Utc);
-        var old = Sale.Create(7, soldAt, new DateOnly(2026, 10, 17), [new SaleItem(drug, SaleUnit.Pack, 1)], 45m);
-        db.Sales.Add(old);
-        db.SaveChanges();
-        db.ChangeTracker.Clear();
+        db.Database.ExecuteSql($"""
+            INSERT INTO "Sales" ("Id", "Number", "SoldAtUtc", "BusinessDate", "Total", "Paid")
+            VALUES ({saleId}, 7, {soldAt}, {new DateOnly(2026, 10, 17)}, '45.0', '45.0');
+            """);
 
         migrator.Migrate();
 
         var message = Assert.Single(db.OutboxMessages.AsNoTracking());
-        Assert.Equal((old.Id, 7L, OutboxStatus.Pending, soldAt), (message.SubjectId, message.Sequence, message.Status, message.NextAttemptAtUtc));
+        Assert.Equal((saleId, 7L, OutboxStatus.Pending, soldAt), (message.SubjectId, message.Sequence, message.Status, message.NextAttemptAtUtc));
         Assert.NotEqual(Guid.Empty, message.Id);
     }
 
