@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PharmaAI.Application.Abstractions;
+using PharmaAI.Application.Catalog;
 using PharmaAI.Application.Sync;
 using PharmaAI.Application.Sync.Eta;
+using PharmaAI.Infrastructure.Catalog;
 using PharmaAI.Infrastructure.Sync;
 using PharmaAI.Infrastructure.Persistence;
 
@@ -33,6 +35,9 @@ public static class DependencyInjection
 
         services.AddScoped<IPharmaDbContext>(sp => sp.GetRequiredService<PharmaDbContext>());
         services.AddScoped<IDatabaseDiagnostics, DatabaseDiagnostics>();
+
+        // Parsed on first use (the first catalog search), not at startup.
+        services.AddSingleton(_ => EmbeddedDrugCatalog.Load());
 
         services.AddSingleton<SyncSignal>();
         services.AddSingleton<ISyncTrigger>(sp => sp.GetRequiredService<SyncSignal>());

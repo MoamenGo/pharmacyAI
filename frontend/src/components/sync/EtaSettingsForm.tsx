@@ -114,22 +114,30 @@ export function EtaSettingsForm({ onSaved }: { onSaved: () => void }) {
             onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
             className="h-5 w-5 accent-emerald-500"
           />
-          <span>إرسال الإيصالات لمصلحة الضرائب</span>
+          <span>تفعيل الإيصال الإلكتروني مع مصلحة الضرائب (اختياري)</span>
         </label>
-        <label className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">البيئة</span>
-          <select
-            value={form.environment}
-            onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value as EtaSettingsInput["environment"] }))}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-          >
-            <option value="preProduction">تجريبية (Pre-production)</option>
-            <option value="production">فعلية (Production)</option>
-          </select>
-        </label>
+        {form.enabled && (
+          <label className="flex items-center gap-2">
+            <span className="text-sm text-slate-400">البيئة</span>
+            <select
+              value={form.environment}
+              onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value as EtaSettingsInput["environment"] }))}
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            >
+              <option value="preProduction">تجريبية (Pre-production)</option>
+              <option value="production">فعلية (Production)</option>
+            </select>
+          </label>
+        )}
       </div>
 
-      {SECTIONS.map((section) => (
+      {!form.enabled && (
+        <p className="text-sm text-slate-400" data-testid="eta-off-note">
+          مقفول: البيع والإيصالات شغالين عادي، ومفيش أي حاجة بتتبعت للضرائب. لو فعّلته بعدين، الفواتير اللي هتتعمل من ساعتها بس هي اللي هتتبعت.
+        </p>
+      )}
+
+      {form.enabled && SECTIONS.map((section) => (
         <fieldset key={section.title} className="space-y-3">
           <legend className="mb-2 font-bold text-slate-300">{section.title}</legend>
           <div className="grid gap-3 sm:grid-cols-2">

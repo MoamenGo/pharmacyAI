@@ -2,8 +2,11 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using PharmaAI.Application.Sync;
 using PharmaAI.Application.Common;
 using PharmaAI.Application.Sales.Commands.CreateSale;
+using PharmaAI.Application.Sync.Commands.SaveEtaSettings;
+using PharmaAI.Application.Sync.Eta;
 using PharmaAI.Application.Tests.TestSupport;
 using PharmaAI.Domain.Inventory;
 using PharmaAI.Domain.Sales;
@@ -19,9 +22,24 @@ public sealed class OutboxEnqueueTests : IDisposable
 
     private readonly SqliteTestDatabase _database = new();
 
-    private async Task<Guid> SeedDrugAsync(int boxes = 2)
+    private sealed class NoTrigger : ISyncTrigger
+    {
+        public void RequestSync()
+        {
+        }
+    }
+
+    private async Task<Guid> SeedDrugAsync(int boxes = 2, bool etaEnabled = true)
     {
         await using var db = _database.CreateContext();
+        if (etaEnabled)
+        {
+            await new SaveEtaSettingsCommandHandler(db, Clock, new NoTrigger()).Handle(
+                new SaveEtaSettingsCommand(
+                    true, EtaEnvironment.PreProduction, "", null, "", "", "", null, "", "", "0", "", "", "", "", "4772"),
+                CancellationToken.None);
+        }
+
         var drug = InventoryTestData.Panadol();
         drug.ReceiveStock("B1", new DateOnly(2027, 6, 30), boxes * 3, InventoryTestData.ReceivedAt);
         db.Drugs.Add(drug);
@@ -49,6 +67,18 @@ public sealed class OutboxEnqueueTests : IDisposable
         var messages = await db.OutboxMessages.OrderBy(m => m.Sequence).ToListAsync();
         Assert.Equal(sales.Select(s => (s.Id, s.Number)), messages.Select(m => (m.SubjectId, m.Sequence)));
         Assert.All(messages, m => Assert.Equal((OutboxMessage.EtaReceiptKind, OutboxStatus.Pending), (m.Kind, m.Status)));
+    }
+
+    [Fact]
+    public async Task With_the_e_receipt_turned_off_sales_are_not_queued()
+    {
+        var id = await SeedDrugAsync(etaEnabled: false);
+
+        await SellAsync(id);
+
+        await using var db = _database.CreateContext();
+        Assert.Single(db.Sales);
+        Assert.Empty(db.OutboxMessages);
     }
 
     [Fact]

@@ -51,6 +51,19 @@ export interface NewDrug {
   publicPricePiasters: number;
 }
 
+/** A product from the bundled list of medicines registered in Egypt, with a guess at how it is packed. */
+export interface CatalogDrug {
+  nameEn: string;
+  nameAr: string;
+  scientificName: string;
+  manufacturer: string;
+  route: string;
+  publicPricePiasters: number;
+  packUnitName: string;
+  subUnitName: string;
+  subUnitsPerPack: number;
+}
+
 export interface StockReceipt {
   batchNumber: string;
   expiryDate: string;
@@ -262,6 +275,8 @@ export const api = {
       throw error;
     }
   },
+
+  searchCatalog: (search: string) => request<CatalogDrug[]>(`/api/catalog?search=${encodeURIComponent(search)}&limit=8`),
 
   createDrug: (drug: NewDrug) => request<DrugDetails>("/api/drugs", { method: "POST", body: JSON.stringify(drug) }),
 

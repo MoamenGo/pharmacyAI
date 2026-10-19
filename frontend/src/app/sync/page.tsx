@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ShortcutBar } from "@/components/ShortcutBar";
-import { ETA_FIELD_LABELS, EtaSettingsForm } from "@/components/sync/EtaSettingsForm";
+import Link from "next/link";
+import { ETA_FIELD_LABELS } from "@/components/sync/EtaSettingsForm";
 import { ProblemList } from "@/components/sync/ProblemList";
 import { useFunctionKeys } from "@/hooks/useFunctionKeys";
 import { api, type SyncStatus } from "@/lib/api";
@@ -86,8 +87,12 @@ export default function SyncPage() {
       )}
 
       {status && !status.enabled && (
-        <p role="status" className="rounded-lg bg-amber-950 px-4 py-2 text-amber-300">
-          الإرسال للضرائب مقفول. الفواتير بتتحفظ في الطابور وهتتبعت لما تفعّله من الإعدادات تحت.
+        <p role="status" className="rounded-lg bg-slate-900 px-4 py-2 text-slate-300">
+          الإيصال الإلكتروني مقفول، والفواتير مش بتتبعت للضرائب. تقدر تفعّله من{" "}
+          <Link href="/settings/" className="text-emerald-400 underline">
+            الإعدادات
+          </Link>
+          .
         </p>
       )}
 
@@ -125,7 +130,13 @@ export default function SyncPage() {
         <ProblemList problems={status?.problems ?? []} retrying={retrying} onRetry={(id) => void retry(id)} />
       </section>
 
-      <EtaSettingsForm onSaved={() => void refresh()} />
+      <p className="text-sm text-slate-400">
+        بيانات الربط مع الضرائب في{" "}
+        <Link href="/settings/" className="text-emerald-400 underline">
+          الإعدادات
+        </Link>
+        .
+      </p>
 
       <ShortcutBar shortcuts={[{ key: "F5", label: "زامن دلوقتي" }]} />
     </main>

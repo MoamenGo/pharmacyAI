@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api, type DrugDetails } from "@/lib/api";
+import { api, type CatalogDrug, type DrugDetails } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { parsePounds } from "@/lib/format";
+import { CatalogSearch } from "./CatalogSearch";
 import { Field } from "./Field";
 
 interface Props {
@@ -23,6 +24,7 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
     subUnitsPerPack: "1",
     price: "",
   });
+  const [picked, setPicked] = useState<CatalogDrug | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +33,20 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
   }, []);
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // The list has no barcodes and prices change, so the barcode stays as scanned and every field stays editable.
+  const fillFromCatalog = (drug: CatalogDrug) => {
+    setPicked(drug);
+    setForm((f) => ({
+      ...f,
+      nameAr: drug.nameAr || drug.nameEn,
+      nameEn: drug.nameEn,
+      price: (drug.publicPricePiasters / 100).toString(),
+      packUnitName: drug.packUnitName,
+      subUnitName: drug.subUnitName,
+      subUnitsPerPack: String(drug.subUnitsPerPack),
+    }));
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,8 +82,14 @@ export function NewDrugDialog({ initialBarcode, onClose, onCreated }: Props) {
     >
       <form onSubmit={submit} className="space-y-4">
         <h2 className="text-xl font-bold">صنف جديد</h2>
+        <CatalogSearch onPick={fillFromCatalog} />
+        {picked && (
+          <p className="rounded-lg bg-slate-950 px-3 py-2 text-sm text-slate-300" data-testid="catalog-picked">
+            من الدليل: <span dir="ltr">{picked.scientificName}</span> · {picked.manufacturer}. راجع السعر وعدد الشرايط على العلبة.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field id="nameAr" label="الاسم بالعربي" value={form.nameAr} onChange={set("nameAr")} required autoFocus className="col-span-2" />
+          <Field id="nameAr" label="الاسم بالعربي" value={form.nameAr} onChange={set("nameAr")} required className="col-span-2" />
           <Field id="nameEn" label="الاسم بالإنجليزي" value={form.nameEn} onChange={set("nameEn")} dir="ltr" className="col-span-2" />
           <Field id="barcode" label="الباركود" value={form.barcode} onChange={set("barcode")} required dir="ltr" />
           <Field id="price" label="سعر العلبة (ج.م)" value={form.price} onChange={set("price")} required inputMode="decimal" dir="ltr" />
